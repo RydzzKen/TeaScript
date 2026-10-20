@@ -8,12 +8,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 try:
     import tomllib  # Python 3.11+
 except ImportError:  # pragma: no cover
-    tomllib = None
+    try:
+        import tomli as tomllib  # Python < 3.11
+    except ImportError:
+        tomllib = None
 
 
 def read_pyproject():
     if tomllib is None:
-        pytest.skip("tomllib tidak tersedia (butuh Python 3.11+)")
+        pytest.skip("tomllib/tomli tidak tersedia")
     with open(os.path.join(ROOT, "pyproject.toml"), "rb") as f:
         return tomllib.load(f)
 

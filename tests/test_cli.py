@@ -3,6 +3,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from teascript.cli import main, run_file
+from test_packaging import read_pyproject
 
 
 def test_help():
@@ -116,9 +117,7 @@ def test_help_menyebut_info_dan_sinonim():
 
 
 def test_pyproject_punya_alias_teascript():
-    import tomllib
-    with open(os.path.join(ROOT, "pyproject.toml"), "rb") as f:
-        data = tomllib.load(f)
+    data = read_pyproject()
     scripts = data["project"]["scripts"]
     assert "teascript" in scripts, "perintah alternatif 'teascript' hilang"
     assert "teascript-web" in scripts
