@@ -44,9 +44,13 @@ Setelah itu perintah `tea` bisa dipakai dari folder mana saja:
 ```bash
 tea tes.tea        # jalankan file
 tea check tes.tea  # periksa karakter aneh (spasi tak-putus, kutip pintar, dll.)
+tea info           # versi & lokasi paket yang sedang jalan
 tea                # buka REPL
 tea --version
 ```
+
+> Perintah `tea` dan `teascript` **sama saja** — pakai `teascript` kalau `tea`
+> di sistemmu tertukar dengan program lain.
 
 ### Dari PyPI (setelah rilis)
 
@@ -118,7 +122,7 @@ print(faktorial(5))                    // 120
 print(10 > 5 ? "benar" : "salah")      // benar — ternary
 ```
 
-Lebih lengkap ada di folder [`examples/`](examples/): `fizzbuzz.tea`, `statistik.tea`, `strings.tea`, `belanja.tea`.
+Lebih lengkap ada di folder [`examples/`](examples/): `fizzbuzz.tea`, `statistik.tea`, `strings.tea`, `belanja.tea`, `modul.tea`, `pyimport.tea`, `konfigurasi.tea` (baca `.env`), `web.tea` (server), dan `gemini.tea` (chatbot lewat REST API).
 
 ---
 
@@ -442,6 +446,56 @@ python3 -c "import sys;d=open('file.tea','rb').read();open('file.tea','wb').writ
 > Di **Termux/Android**, editor atau keyboard kadang menyisipkan spasi tak-putus
 > dan kutip pintar. Kalau `tea file.tea` tiba-tiba gagal padahal di komputer lain
 > jalan, jalankan `tea check file.tea` dulu.
+
+## Troubleshooting: perintah `tea` tertukar
+
+Nama `tea` cukup umum — di sebagian sistem ada program lain bernama `tea`
+(mis. paket `tea` di PyPI). Kalau `tea --version` atau `tea check` memberi hasil
+aneh ("file '--version' tidak ditemukan"), periksa dengan:
+
+```bash
+tea info
+```
+
+Perintah itu menampilkan **versi dan lokasi paket yang sedang jalan**, plus
+peringatan kalau `tea` di PATH bukan milik TeaScript:
+
+```
+TeaScript 0.4.2
+paket   : /data/.../site-packages/teascript
+python  : /data/data/com.termux/files/usr/bin/python3
+
+PERHATIAN: perintah 'tea' di PATH bukan dari paket ini.
+  PATH   : /usr/bin/tea
+  paket  : /usr/local/bin/tea
+  Pakai 'teascript' untuk memastikan versi yang benar,
+  atau pasang ulang lalu jalankan: hash -r
+```
+
+Solusinya:
+
+```bash
+hash -r                                # buang cache lokasi perintah di shell
+teascript --version                    # perintah alternatif, tidak mudah bentrok
+pip install --force-reinstall --upgrade \
+  "teascript @ git+https://github.com/RydzzKen/TeaScript.git"
+hash -r
+```
+
+## Contoh: chatbot Gemini
+
+`examples/gemini.tea` memanggil REST API Gemini lewat `pyimport("requests")`.
+API key **tidak ditulis di file** — dibaca dari `.env`:
+
+```
+GEMINI_API_KEY=xxxxx
+GEMINI_MODEL=gemini-flash-lite-latest
+```
+
+```bash
+pip install requests
+tea examples/gemini.tea
+```
 
 ## Bikin Web dengan TeaScript
 

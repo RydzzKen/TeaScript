@@ -155,6 +155,40 @@ def check_file(path):
     return 1
 
 
+def print_info():
+    """Tampilkan versi & lokasi paket yang sedang jalan.
+
+    Berguna saat ada lebih dari satu TeaScript terpasang (mis. perintah `tea`
+    dari lokasi lain menutupi yang baru) — jalankan ini untuk melihat versi
+    mana yang benar-benar dipakai.
+    """
+    from . import __version__
+    import teascript
+    import shutil
+
+    print(f"TeaScript {__version__}")
+    print(f"paket   : {os.path.dirname(os.path.abspath(teascript.__file__))}")
+    print(f"python  : {sys.executable}")
+    print(f"versi py: {sys.version.split()[0]}")
+
+    for nama in ("tea", "teascript"):
+        ditemukan = shutil.which(nama)
+        print(f"{nama:8}: {ditemukan or '(tidak ada di PATH)'}")
+
+    # peringatan kalau perintah `tea`/`teascript` bukan dari paket ini
+    pkg_bin = os.path.join(os.path.dirname(sys.executable), "tea")
+    tea_path = shutil.which("tea")
+    if tea_path and os.path.exists(pkg_bin):
+        if os.path.realpath(tea_path) != os.path.realpath(pkg_bin):
+            print()
+            print("PERHATIAN: perintah 'tea' di PATH bukan dari paket ini.")
+            print(f"  PATH   : {tea_path}")
+            print(f"  paket  : {pkg_bin}")
+            print("  Pakai 'teascript' untuk memastikan versi yang benar,")
+            print("  atau pasang ulang lalu jalankan: hash -r")
+    return 0
+
+
 def main(argv=None):
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -164,21 +198,31 @@ def main(argv=None):
             return run_bytes(sys.stdin.buffer.read())
         repl()
         return 0
+
+    prog = os.path.basename(sys.argv[0]) or "tea"
+    if prog not in ("tea", "teascript"):
+        prog = "tea"  # dipanggil lewat `python -m teascript` dsb.
+
     if args[0] in ("-h", "--help"):
-        print("Penggunaan: tea <file.tea>")
-        print("  tea file.tea   menjalankan file")
-        print("  tea check f    periksa karakter aneh di file")
-        print("  tea -          menjalankan kode dari stdin")
-        print("  tea            membuka REPL (tanpa argumen)")
+        print(f"Penggunaan: {prog} <file.tea>")
+        print(f"  {prog} file.tea   menjalankan file")
+        print(f"  {prog} check f    periksa karakter aneh di file")
+        print(f"  {prog} info       versi & lokasi paket yang sedang jalan")
+        print(f"  {prog} -          menjalankan kode dari stdin")
+        print(f"  {prog}            membuka REPL (tanpa argumen)")
         print("  tea-web        playground web (Flask)")
+        print()
+        print("Sinonim: 'tea' dan 'teascript' sama saja.")
         return 0
     if args[0] in ("-v", "--version"):
         from . import __version__
         print(f"TeaScript {__version__}")
         return 0
+    if args[0] == "info":
+        return print_info()
     if args[0] == "check":
         if len(args) < 2:
-            print("Penggunaan: tea check <file.tea>", file=sys.stderr)
+            print(f"Penggunaan: {prog} check <file.tea>", file=sys.stderr)
             return 1
         return check_file(args[1])
     if args[0] == "-":

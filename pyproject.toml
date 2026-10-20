@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "teascript"
-version = "0.4.1"
+version = "0.4.2"
 description = "TeaScript: bahasa skrip kecil bergaya JavaScript/Python, diimplementasikan di Python"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -26,7 +26,9 @@ Changelog = "https://github.com/RydzzKen/teascript/releases"
 
 [project.scripts]
 tea = "teascript.cli:main"
+teascript = "teascript.cli:main"
 tea-web = "teascript.web:main"
+teascript-web = "teascript.web:main"
 
 [project.optional-dependencies]
 web = ["flask>=3.0"]

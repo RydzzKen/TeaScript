@@ -123,7 +123,28 @@ Yang dibuat:
 - Test: `tests/test_cli.py` bertambah (7 test). Total suite: **171 lulus**.
 - README: bagian **Troubleshooting: "karakter tidak dikenal"**.
 
-## 6. Ide fitur yang belum dikerjakan
+## 6. Perintah `teascript` + `tea info` — SELESAI
+
+Latar: di Termux, `tea check`/`tea --version` sempat memberi *"file 'check'
+tidak ditemukan"*. Ternyata `tea` di PATH bukan versi yang baru dipasang
+(nama `tea` terlalu umum, mudah ditutupi program lain / cache shell lama).
+
+Yang dibuat:
+
+- Perintah alternatif **`teascript`** dan **`teascript-web`** di `pyproject.toml`
+  (kode sama dengan `tea`/`tea-web`; kalau `tea` bentrok, pakai yang ini).
+- Perintah baru **`tea info`**: tampilkan versi, lokasi paket, python, dan
+  **peringatan** kalau `tea` di PATH bukan milik paket ini.
+- `--help` menyebut `info` + catatan sinonim `tea`/`teascript`.
+- Contoh **`examples/gemini.tea`**: chatbot Gemini via `pyimport("requests")`,
+  API key dibaca dari `.env` (tidak ditulis di file).
+- `examples/env.tea` → `examples/konfigurasi.tea` (nama lama menabrak modul
+  stdlib `env`; ketemu saat menguji `examples/gemini.tea`).
+- Test baru: alias di pyproject, `tea info`, contoh tidak bentrok nama modul
+  stdlib. Total suite: **178 lulus**.
+- README: bagian **Troubleshooting: perintah `tea` tertukar** + contoh Gemini.
+
+## 7. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

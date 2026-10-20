@@ -1,0 +1,67 @@
+// Contoh: chatbot Gemini lewat REST API, dijalankan dari TeaScript.
+//
+// Butuh: requests (pip install requests)
+// Simpan API key di file .env (JANGAN di dalam file ini):
+//
+//   GEMINI_API_KEY=xxxxx
+//   GEMINI_MODEL=gemini-flash-lite-latest
+//
+// Jalankan:
+//   tea examples/gemini.tea
+//   (ketik pesan, lalu "exit" atau kosong untuk keluar)
+
+import env
+
+let requests = pyimport("requests")
+
+env.load()
+let API_KEY = env.get("GEMINI_API_KEY", "")
+let model = env.get("GEMINI_MODEL", "gemini-flash-lite-latest")
+
+if API_KEY == "" {
+  print("API key belum ada.")
+  print("Buat file .env berisi:  GEMINI_API_KEY=xxxxx")
+  print("lalu jalankan lagi:     tea examples/gemini.tea")
+  error("GEMINI_API_KEY kosong")
+}
+
+let url = "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}"
+
+print("TeaChat (${model}) — ketik 'exit' untuk keluar.")
+print()
+
+while true {
+  let user = input("You : ")
+  let perintah = lower(trim(user))
+
+  if trim(user) == "" or perintah == "exit" or perintah == "quit" {
+    print("Dadah!")
+    break
+  }
+
+  let payload = {
+    "contents": [
+      {
+        "parts": [{"text": user}]
+      }
+    ]
+  }
+
+  let header = {
+    "Content-Type": "application/json"
+  }
+
+  // Keyword argument TeaScript ditulis "let _nama = nilai"
+  let response = requests.post(url, let _json = payload, let _headers = header)
+
+  if response.status_code != 200 {
+    print("Error HTTP:", response.status_code)
+    print(response.text)
+    continue
+  }
+
+  let data = response.json()
+  let jawaban = data["candidates"][0]["content"]["parts"][0]["text"]
+  print("AI  : ${jawaban}")
+  print()
+}

@@ -27,13 +27,15 @@ def test_file_tidak_ditemukan():
 
 
 def test_semua_contoh_berjalan():
-    # Contoh server web tidak dijalankan buta: server-nya memblokir,
-    # dan file itu dites terpisah di tests/test_web.py
+    # Contoh yang tidak dijalankan buta:
+    #   web.tea    → servernya memblokir (dites terpisah di test_web.py)
+    #   gemini.tea → butuh API key & jaringan
+    LEWATI = {"web.tea", "gemini.tea"}
     examples = glob.glob(os.path.join(ROOT, "examples", "*.tea"))
     assert examples, "folder examples kosong"
     diuji = 0
     for path in examples:
-        if os.path.basename(path) == "web.tea":
+        if os.path.basename(path) in LEWATI:
             continue
         with contextlib.redirect_stdout(io.StringIO()) as buf:
             code = run_file(path)
@@ -41,6 +43,91 @@ def test_semua_contoh_berjalan():
         assert buf.getvalue(), f"{path} tidak menghasilkan output"
         diuji += 1
     assert diuji >= 4, "terlalu sedikit contoh yang diuji"
+
+
+def test_contoh_gemini_error_tanpa_key():
+    """gemini.tea harus berhenti dengan pesan jelas kalau API key kosong."""
+    import tempfile
+    path = os.path.join(ROOT, "examples", "gemini.tea")
+    with tempfile.TemporaryDirectory() as tmp:
+        cwd = os.getcwd()
+        os.chdir(tmp)  # folder tanpa .env
+        try:
+            out = io.StringIO()
+            err = io.StringIO()
+            with contextlib.redirect_stdout(out), \
+                    contextlib.redirect_stderr(err):
+                code = run_file(path)
+        finally:
+            os.chdir(cwd)
+        assert code == 1
+        assert "API key" in out.getvalue()
+        assert "GEMINI_API_KEY" in out.getvalue()
+
+
+def test_modul_stdlib_env_tidak_bentrok_contoh():
+    """Tidak boleh ada file contoh bernama env.tea (menabrak modul stdlib)."""
+    assert not os.path.exists(os.path.join(ROOT, "examples", "env.tea")), \
+        "examples/env.tea menabrak modul stdlib 'env' — ganti namanya"
+
+
+def test_tidak_ada_contoh_bentrok_nama_modul_stdlib():
+    """File di examples/ tidak boleh bernama sama dengan modul stdlib."""
+    modul = {os.path.basename(p)[:-4]
+             for p in glob.glob(os.path.join(ROOT, "teascript", "modules", "*.tea"))}
+    bentrok = []
+    for path in glob.glob(os.path.join(ROOT, "examples", "*.tea")):
+        nama = os.path.basename(path)[:-4]
+        if nama in modul:
+            bentrok.append(nama)
+    assert not bentrok, f"contoh bentrok dengan modul stdlib: {bentrok}"
+
+
+# --- alias perintah & info ---
+
+def test_info_menampilkan_lokasi_paket():
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        assert main(["info"]) == 0
+    out = buf.getvalue()
+    assert "TeaScript" in out
+    assert "paket" in out
+    assert "python" in out
+
+
+def test_help_menyebut_info_dan_sinonim():
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        assert main(["--help"]) == 0
+    out = buf.getvalue()
+    assert "info" in out
+    assert "teascript" in out.lower()
+
+
+def test_pyproject_punya_alias_teascript():
+    import tomllib
+    with open(os.path.join(ROOT, "pyproject.toml"), "rb") as f:
+        data = tomllib.load(f)
+    scripts = data["project"]["scripts"]
+    assert "teascript" in scripts, "perintah alternatif 'teascript' hilang"
+    assert "teascript-web" in scripts
+    assert scripts["teascript"] == scripts["tea"]
+
+
+def test_import_env_dari_folder_contoh():
+    """`import env` di examples/ harus ambil modul stdlib, bukan file contoh."""
+    from teascript.lexer import Lexer
+    from teascript.parser import Parser
+    from teascript.evaluator import Evaluator
+
+    examples = os.path.join(ROOT, "examples")
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        Evaluator().run(
+            Parser(Lexer('import env\nprint(env.load())\n').tokenize()).parse(),
+            base_dir=examples)
+    # tidak error; hasil true/false tergantung ada tidaknya .env di atas
+    assert buf.getvalue().strip() in ("true", "false")
 
 
 # --- tea check ---
