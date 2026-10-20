@@ -259,6 +259,34 @@ def test_slice_error():
         assert e.line == 1
 
 
+def test_index_negatif_list_dan_string():
+    # indeks negatif dihitung dari belakang (seperti Python)
+    assert capture("let xs = [1, 2, 3]\nprint(xs[-1])") == "3\n"
+    assert capture("let xs = [1, 2, 3]\nprint(xs[-3])") == "1\n"
+    assert capture('let s = "halo"\nprint(s[-1])') == "o\n"
+    assert capture('let s = "halo"\nprint(s[-2])') == "l\n"
+
+
+def test_index_negatif_bisa_diubah():
+    assert capture(
+        "let xs = [1, 2, 3]\nxs[-1] = 99\nprint(xs)") == "[1, 2, 99]\n"
+
+
+def test_index_di_luar_batas_tetap_error():
+    from teascript.errors import RuntimeErrorTea
+    for src in ("let xs = [1, 2]\nprint(xs[5])",
+                "let xs = [1, 2]\nprint(xs[-5])",
+                'let s = "ab"\nprint(s[9])',
+                'let s = "ab"\nprint(s[-9])'):
+        try:
+            run(src)
+            assert False, f"seharusnya error: {src}"
+        except RuntimeErrorTea as e:
+            assert "di luar batas" in e.message
+            # pesan memakai indeks asli, bukan hasil normalisasi
+            assert "panjang" in e.message
+
+
 def test_operator_in():
     assert capture("print(2 in [1, 2, 3])") == "true\n"
     assert capture("print(9 in [1, 2, 3])") == "false\n"

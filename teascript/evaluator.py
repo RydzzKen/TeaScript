@@ -1300,8 +1300,13 @@ class Evaluator:
         if isinstance(target, list):
             if not isinstance(index, int) or isinstance(index, bool):
                 raise RuntimeErrorTea("indeks list harus angka bulat", line)
+            asli = index
+            if index < 0:
+                index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(f"indeks {index} di luar batas list", line)
+                raise RuntimeErrorTea(
+                    f"indeks {asli} di luar batas list (panjang {len(target)})",
+                    line)
             return target[index]
         if isinstance(target, dict):
             self.check_hashable(index, line)
@@ -1325,8 +1330,13 @@ class Evaluator:
                 return BoundMethod(target, fn, index)
             if not isinstance(index, int) or isinstance(index, bool):
                 raise RuntimeErrorTea("indeks string harus angka bulat", line)
+            asli = index
+            if index < 0:
+                index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(f"indeks {index} di luar batas string", line)
+                raise RuntimeErrorTea(
+                    f"indeks {asli} di luar batas string (panjang {len(target)})",
+                    line)
             return target[index]
 
         # Objek Python (hasil pyimport): akses atribut, mis. m.sqrt
@@ -1345,8 +1355,13 @@ class Evaluator:
         if isinstance(target, list):
             if not isinstance(index, int) or isinstance(index, bool):
                 raise RuntimeErrorTea("indeks list harus angka bulat", line)
+            asli = index
+            if index < 0:
+                index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(f"indeks {index} di luar batas list", line)
+                raise RuntimeErrorTea(
+                    f"indeks {asli} di luar batas list (panjang {len(target)})",
+                    line)
             target[index] = value
             return
         if isinstance(target, dict):

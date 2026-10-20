@@ -172,7 +172,35 @@ Yang dibuat (pilihan "keduanya" — method **dan** fungsi global):
 - README: bagian String ditulis ulang + daftar fitur; `examples/strings.tea`
   diperluas jadi peraga method.
 
-## 8. Ide fitur yang belum dikerjakan
+## 8. Ketika AI disuruh menulis TeaScript
+
+Masalah: model bahasa tidak tahu TeaScript, jadi mereka menulis Python/JS
+lalu menggantinya asal-asalan — `def`, `x++`, `# komentar`, `import requests`,
+`load_dotenv()`, semuanya salah.
+
+Solusi: satu file spesifikasi ringkas — **`docs/AI.md`**. Tempel ke
+ChatGPT/Claude/Gemini sebagai system prompt. Isinya: aturan emas, sintaks,
+builtin, modul, pyimport, web, contoh lengkap, dan tabel kesalahan umum.
+
+Yang penting: **setiap blok ```tea di file itu dijalankan sungguhan** oleh
+`tests/test_docs_ai.py`. Spesifikasi keliru lebih buruk daripada tidak ada
+spesifikasi — AI akan meniru kesalahannya.
+
+Checker itu langsung menemukan **dua bug nyata**:
+
+1. **`xs[-1]` tidak jalan.** Slicing mendukung indeks negatif (`xs[-2:]`),
+   tapi indeks tunggal tidak — padahal Python mendukungnya. Diperbaiki
+   untuk list dan string, termasuk `xs[-1] = 9`. Pesan error juga memakai
+   indeks asli (`indeks -5 di luar batas list (panjang 2)`), bukan hasil
+   normalisasi yang membingungkan.
+2. **Fungsi anonim tidak ada** (`let f = fn(x) {...}` → syntax error),
+   tapi spesifikasi saya sempat mencontohkannya. Contoh diganti fungsi
+   bernama; `docs/AI.md` sekarang menyatakan fitur ini **belum ada**, dan
+   ada test yang melarang `fn(` muncul di blok contoh.
+
+Total suite setelah ini: **194 lulus**.
+
+## 9. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

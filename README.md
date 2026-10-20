@@ -23,6 +23,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - String interpolasi ala JS: `"Halo, ${nama}!"`
 - **Method string** ala Python/JS: `s.upper()`, `"a,b".split(",")`, `s.startswith("x")`
 - Slicing ala Python: `xs[1:3]`, `s[:5]`, `xs[-2:]`, `xs[:]`
+- Indeks negatif: `xs[-1]` (dari belakang), bisa juga diubah `xs[-1] = 9`
 - Operator keanggotaan: `x in daftar`, `x not in daftar`
 - **Modul**: `import math`, `from collections import sum`, dot access `math.sqrt(2)`
 - **Interop Python**: `let m = pyimport("math")` → pakai library Python apa pun
@@ -108,6 +109,11 @@ pip install dist/teascript-0.4.0-py3-none-any.whl
 > Fitur inti TeaScript jalan tanpa keduanya.
 
 ## Contoh Cepat
+
+> **Mau AI menuliskan TeaScript untukmu?** Tempel
+> [`docs/AI.md`](docs/AI.md) ke ChatGPT/Claude/Gemini — isinya spesifikasi
+> ringkas bahasa ini, dan semua contohnya diuji otomatis supaya AI tidak
+> diberi contoh yang salah.
 
 ```tea
 // Fungsi + loop + compound assignment
@@ -231,9 +237,11 @@ print(s[:])        // seluruh string
 ```tea
 let xs = [1, 2, 3, 4, 5]
 print(xs[0])       // 1
+print(xs[-1])      // 5  (indeks negatif dari belakang)
 print(xs[1:3])     // [2, 3]
 print(xs[-2:])     // [4, 5]
-push(xs, 6)        // [1, 2, 3, 4, 5, 6]
+xs[-1] = 99        // ubah elemen terakhir
+push(xs, 6)        // [1, 2, 3, 4, 5, 99, 6]
 print(pop(xs))     // 6
 print(3 in xs)     // true
 
@@ -593,6 +601,8 @@ TeaScript/
 │   ├── cli.py          # argumen command line
 │   └── modules/        # stdlib TeaScript: math, text, collections, env
 ├── examples/           # contoh program .tea
+├── docs/
+│   └── AI.md           # spesifikasi ringkas untuk ditempel ke AI
 └── tests/              # unit test
 ```
 
