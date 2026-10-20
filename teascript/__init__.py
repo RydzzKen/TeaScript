@@ -1,3 +1,7 @@
-"""TeaScript 0.1 — interpreter bahasa pemrograman kecil."""
+"""TeaScript — interpreter bahasa pemrograman kecil bergaya JavaScript/Python."""
 
-__version__ = "0.1.0"
+try:
+    from importlib.metadata import version as _version
+    __version__ = _version("teascript")
+except Exception:  # belum terpasang (dijalankan dari sumber)
+    __version__ = "0.4.0"

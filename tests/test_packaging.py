@@ -39,6 +39,13 @@ def test_versi_cli_sama_dengan_metadata():
     assert versi_cli == read_pyproject()["project"]["version"]
 
 
+def test_init_version_jadi_satu_sumber():
+    """teascript.__version__ harus ada dan berformat versi."""
+    import teascript
+    bagian = teascript.__version__.split(".")
+    assert len(bagian) == 3 and all(b.isdigit() for b in bagian)
+
+
 def test_modul_stdlib_ada_di_disk():
     modul = glob.glob(os.path.join(ROOT, "teascript", "modules", "*.tea"))
     nama = {os.path.basename(m) for m in modul}

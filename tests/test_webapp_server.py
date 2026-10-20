@@ -82,7 +82,9 @@ def test_server_http_sungguhan():
         assert status == 200 and body == "42"
 
         status, body = get("/info")
-        assert status == 200 and json.loads(body)["versi"] == "0.3.0"
+        data = json.loads(body)
+        assert status == 200 and data["nama"] == "TeaScript"
+        assert data["versi"] and data["versi"] != ""
 
         with pytest.raises(urllib.error.HTTPError) as e:
             get("/tidak-ada")

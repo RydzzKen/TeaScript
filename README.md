@@ -94,7 +94,7 @@ bash install.sh
 
 # B. bikin paket, lalu pasang paketnya di device lain
 python3 -m build                 # hasilkan dist/*.whl
-pip install dist/teascript-0.3.0-py3-none-any.whl
+pip install dist/teascript-0.4.0-py3-none-any.whl
 ```
 
 > Catatan: `pyimport("requests")` dan `Web.app()` butuh modul Python terkait
@@ -417,7 +417,7 @@ let app = Web.app("teascript")
 
 fn home() { return "<h1>Halo dari TeaScript</h1>" }
 fn sapa(nama) { return "Halo, ${nama}!" }
-fn info() { return {nama: "TeaScript", versi: "0.3.0"} }   // dict → JSON
+fn info() { return {nama: "TeaScript", versi: "0.4.0"} }   // dict → JSON
 
 app.route("/")(home)
 app.route("/sapa/<nama>")(sapa)

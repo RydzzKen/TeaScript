@@ -67,7 +67,8 @@ def main(argv=None):
         print("  tea-web        playground web (Flask)")
         return 0
     if args[0] in ("-v", "--version"):
-        print("TeaScript 0.3.0")
+        from . import __version__
+        print(f"TeaScript {__version__}")
         return 0
     if args[0] == "-":
         return run_bytes(sys.stdin.buffer.read())
