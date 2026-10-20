@@ -1,5 +1,9 @@
 # TeaScript ☕
 
+[![tests](https://github.com/RydzzKen/TeaScript/actions/workflows/tests.yml/badge.svg)](https://github.com/RydzzKen/TeaScript/actions/workflows/tests.yml)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Lisensi: MIT](https://img.shields.io/badge/lisensi-MIT-green.svg)](LICENSE)
+
 TeaScript adalah bahasa skrip kecil bergaya **JavaScript/Python**, diimplementasikan murni di Python tanpa dependensi eksternal.
 Dirancang sebagai proyek belajar bagaimana sebuah bahasa pemrograman bekerja: **lexer → parser → evaluator**.
 
@@ -27,12 +31,10 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 
 ## Instalasi
 
-### Cara tercepat: satu perintah
+### Cara tercepat: satu perintah dari GitHub
 
 ```bash
-git clone <repo> TeaScript && cd TeaScript   # atau salin foldernya ke device lain
-bash install.sh                                # cukup: bash install.sh
-bash install.sh --web                          # + Flask (fitur tea-web)
+pip install "teascript @ git+https://github.com/RydzzKen/TeaScript.git"
 ```
 
 Setelah itu perintah `tea` bisa dipakai dari folder mana saja:
@@ -41,6 +43,22 @@ Setelah itu perintah `tea` bisa dipakai dari folder mana saja:
 tea tes.tea        # jalankan file
 tea                # buka REPL
 tea --version
+```
+
+### Dari PyPI (setelah rilis)
+
+```bash
+pip install teascript          # CLI saja
+pip install "teascript[web]"   # + Flask (fitur tea-web)
+```
+
+### Clone lalu pasang
+
+```bash
+git clone https://github.com/RydzzKen/TeaScript.git
+cd TeaScript
+bash install.sh                # cukup: bash install.sh
+bash install.sh --web          # + Flask (fitur tea-web)
 ```
 
 Kalau `tea` belum terbaca, tambahkan folder skrip pip ke PATH

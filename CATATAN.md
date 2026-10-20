@@ -53,7 +53,34 @@ Yang dibuat:
 
 Sisa (kalau mau): halaman playground web (nilai tambah buat belajar).
 
-## 3. Ide fitur yang belum dikerjakan
+## 3. Publikasi — SEBAGIAN SELESAI
+
+Repo publik: **https://github.com/RydzzKen/TeaScript** (branch `main`).
+
+Sudah:
+
+- Git repo lokal + commit awal (`0.3.0`), 38 file, file pribadi `tes.tea` tidak ikut.
+- `LICENSE` MIT, metadata `pyproject.toml` lengkap (URL repo, classifier).
+- GitHub Actions: `.github/workflows/tests.yml` (test di 3 versi Python + build),
+  `.github/workflows/publish.yml` (rilis otomatis ke PyPI via Trusted Publishing).
+- Terbukti bisa: `pip install "teascript @ git+https://github.com/RydzzKen/TeaScript.git"`.
+
+Belum (butuh akun/tindakan pemilik):
+
+1. **Rilis PyPI** supaya `pip install teascript` (nama masih bebas di PyPI).
+   Dua jalur:
+   - **Trusted Publishing** (disarankan, tanpa token): di pypi.org → Account →
+     Publishing → tambah *pending publisher* dengan Owner `RydzzKen`,
+     Repository `TeaScript`, Workflow `publish.yml`, Environment `pypi`.
+     Lalu buat Release di GitHub → paket terbit otomatis.
+   - **Manual**: `python -m build` lalu `python -m twine upload dist/*`
+     (butuh API token dari pypi.org).
+2. Ganti identitas commit (`TeaScript contributors <teascript@users.noreply.github.com>`)
+   kalau ingin pakai nama/email sendiri: `git commit --amend --reset-author`.
+3. Setelah terbit: tambah badge PyPI + `pip install teascript` di README (sudah ada,
+   tinggal aktif).
+
+## 4. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.
