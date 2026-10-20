@@ -106,7 +106,24 @@ Yang dibuat:
 Catatan: `pyimport("dotenv")` tetap bisa dipakai, tapi `load_dotenv()` tanpa
 argumen tidak bekerja (akar masalah di `find_dotenv`). Pakai `import env` saja.
 
-## 5. Ide fitur yang belum dikerjakan
+## 5. `tea check` + deteksi karakter aneh — SELESAI
+
+Latar: di Termux muncul `karakter tidak dikenal: '.'`. Ternyata penyebabnya
+karakter non-ASCII yang ikut saat copy-paste (spasi tak-putus, kutip pintar,
+atau karakter lebar-penuh yang terlihat mirip ASCII).
+
+Yang dibuat:
+
+- Lexer menolak **identifier non-ASCII** (mis. `ｎ` lebar-penuh) supaya tidak
+  diam-diam jadi variabel berbeda dari yang dikira.
+- Pesan error karakter aneh kini menyebut jenisnya + kode `U+XXXX` + saran
+  (mis. "ini spasi tak-putus, biasanya ikut saat copy-paste").
+- Perintah baru **`tea check <file.tea>`**: daftar baris:kolom tiap karakter
+  non-ASCII, CRLF, BOM, byte tidak valid; lalu menampilkan baris bermasalah.
+- Test: `tests/test_cli.py` bertambah (7 test). Total suite: **171 lulus**.
+- README: bagian **Troubleshooting: "karakter tidak dikenal"**.
+
+## 6. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

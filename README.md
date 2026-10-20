@@ -29,7 +29,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - **Baca `.env`**: `import env` — konfigurasi tanpa paket Python tambahan
 - Nilai default parameter: `fn sapa(nama, sapaan = "Halo")`
 - 24 fungsi bawaan + 4 modul stdlib (`math`, `text`, `collections`, `env`)
-- Error dengan posisi **baris:kolom**, REPL, dan 135 test
+- Error dengan posisi **baris:kolom**, REPL, dan 171 test
 
 ## Instalasi
 
@@ -43,6 +43,7 @@ Setelah itu perintah `tea` bisa dipakai dari folder mana saja:
 
 ```bash
 tea tes.tea        # jalankan file
+tea check tes.tea  # periksa karakter aneh (spasi tak-putus, kutip pintar, dll.)
 tea                # buka REPL
 tea --version
 ```
@@ -401,6 +402,46 @@ Catatan:
 - **Scope**: variabel mengikuti lingkup blok fungsi; `let` di dalam fungsi tidak mengubah variabel luar, tapi assignment ke variabel luar tetap berlaku (closure).
 - **Key dict** harus tipe yang bisa disimpan (string, number, boolean, nil) — error jelas jika tidak.
 - **Error** selalu menyertakan posisi, mis. `Error (baris 3, kolom 8): variabel 'x' belum dideklarasikan`.
+- **Identifier hanya ASCII.** Huruf "mirip" seperti `ｎ` lebar-penuh atau `ａ` akan ditolak,
+  supaya tidak diam-diam jadi variabel yang berbeda dari yang kamu kira.
+
+## Troubleshooting: "karakter tidak dikenal"
+
+Kalau muncul error seperti ini:
+
+```
+Error (baris 4, kolom 12): karakter tidak dikenal: '\xa0' — ini spasi tak-putus
+(non-breaking space) (kode U+00A0), biasanya ikut saat copy-paste.
+```
+
+penyebabnya karakter **non-ASCII** yang ikut saat copy-paste (dari web, chat,
+atau aplikasi editor di HP). Yang paling sering:
+
+| Terlihat seperti | Sebenarnya | Kode |
+| ---------------- | ---------- | ---- |
+| spasi biasa | spasi tak-putus | `U+00A0` |
+| `"` `'` | kutip pintar | `U+201C` `U+201D` `U+2018` `U+2019` |
+| `-` | en/em-dash | `U+2013` `U+2014` |
+| `.` `n` `a` | lebar-penuh | `U+FF0E` `U+FF4E` `U+FF41` |
+
+Periksa file dengan:
+
+```bash
+tea check file.tea
+```
+
+Perintah itu menampilkan **nomor baris dan kolom** tiap karakter aneh beserta kodenya,
+jadi kamu bisa ganti langsung dengan ASCII biasa. Kalau tidak bisa ganti manual,
+cara cepat membersihkan:
+
+```bash
+# buang semua karakter non-ASCII
+python3 -c "import sys;d=open('file.tea','rb').read();open('file.tea','wb').write(bytes(b for b in d if b<128))"
+```
+
+> Di **Termux/Android**, editor atau keyboard kadang menyisipkan spasi tak-putus
+> dan kutip pintar. Kalau `tea file.tea` tiba-tiba gagal padahal di komputer lain
+> jalan, jalankan `tea check file.tea` dulu.
 
 ## Bikin Web dengan TeaScript
 
@@ -455,7 +496,7 @@ tea-web              # playground + API di http://127.0.0.1:5000
 python3 -m pytest
 ```
 
-161 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), modul `env`, default parameter, packaging, dan CLI.
+171 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), modul `env`, default parameter, `tea check`, packaging, dan CLI.
 
 ## Struktur Proyek
 

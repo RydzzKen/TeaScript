@@ -71,8 +71,11 @@ class Lexer:
                 self.read_string()
                 continue
 
-            # Identifier / keyword
+            # Identifier / keyword (hanya ASCII, supaya karakter "mirip"
+            # seperti ｎ lebar-penuh tidak diam-diam jadi variabel berbeda)
             if ch.isalpha() or ch == "_":
+                if not ch.isascii():
+                    self.error(self._pesan_karakter_aneh(ch))
                 self.read_ident()
                 continue
 
@@ -99,10 +102,45 @@ class Lexer:
                 self.tokens.append(Token(PUNCT, ch, line, col))
                 continue
 
-            self.error(f"karakter tidak dikenal: {ch!r}")
+            self.error(self._pesan_karakter_aneh(ch))
 
         self.tokens.append(Token(EOF, None, self.line, self.column))
         return self.tokens
+
+    def _pesan_karakter_aneh(self, ch):
+        """Pesan jelas untuk karakter yang tidak dikenal lexer.
+
+        Kalau karakter tampak mirip karakter biasa (mis. non-breaking space,
+        zero-width space, tanda kutip 'pintar'), jelaskan asalnya supaya
+        tidak bingung 'kenapa . ini error'.
+        """
+        mirip = {
+            "\u00a0": "spasi tak-putus (non-breaking space)",
+            "\u200b": "zero-width space",
+            "\u200c": "zero-width non-joiner",
+            "\u200d": "zero-width joiner",
+            "\ufeff": "byte-order mark (BOM)",
+            "\u2018": "tanda kutip satu 'pintar'",
+            "\u2019": "tanda kutip satu 'pintar'",
+            "\u201c": "tanda kutip dua 'pintar'",
+            "\u201d": "tanda kutip dua 'pintar'",
+            "\u2013": "tanda hubung en-dash",
+            "\u2014": "tanda hubung em-dash",
+            "\u2026": "elipsis (…)",
+            "\u00d7": "tanda kali (×)",
+            "\u2212": "tanda minus (−)",
+            "\uff0e": "titik lebar penuh (．)",
+            "\uff0f": "garis miring lebar penuh (／)",
+            "\u3002": "titik ideografik (。)",
+        }
+        if ch in mirip:
+            return (f"karakter tidak dikenal: {ch!r} — ini {mirip[ch]} "
+                    f"(kode U+{ord(ch):04X}), biasanya ikut saat copy-paste. "
+                    f"Ganti dengan karakter ASCII biasa.")
+        if 32 <= ord(ch) < 127:
+            return f"karakter tidak dikenal: {ch!r}"
+        return (f"karakter tidak dikenal: {ch!r} (kode U+{ord(ch):04X}) — "
+                f"bukan karakter ASCII, mungkin ikut saat copy-paste.")
 
     def read_number(self):
         line, col = self.line, self.column
@@ -232,9 +270,17 @@ class Lexer:
     def read_ident(self):
         line, col = self.line, self.column
         start = self.pos
-        while self.peek().isalnum() or self.peek() == "_":
-            self.advance()
+        while True:
+            c = self.peek()
+            if c == "_" or c.isascii() and c.isalnum():
+                self.advance()
+            else:
+                break
         text = self.source[start:self.pos]
+        # Karakter setelahnya yang "mirip huruf" tapi bukan ASCII = salah ketik
+        nxt = self.peek()
+        if nxt and not nxt.isascii() and (nxt.isalpha() or nxt.isalnum()):
+            self.error(self._pesan_karakter_aneh(nxt))
         if text in KEYWORDS:
             self.tokens.append(Token(KEYWORD, text, line, col))
         else:
