@@ -33,6 +33,7 @@ teascript-web = "teascript.web:main"
 [project.optional-dependencies]
 web = ["flask>=3.0"]
 dev = ["pytest>=7.0"]
+examples = ["requests>=2.0"]
 
 [tool.setuptools]
 packages = ["teascript"]

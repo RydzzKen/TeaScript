@@ -25,7 +25,7 @@ jobs:
       - name: Pasang dependensi
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,web]"
+          pip install -e ".[dev,web,examples]"
 
       - name: Jalankan test
         run: python -m pytest -q

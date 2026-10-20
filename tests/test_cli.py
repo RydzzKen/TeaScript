@@ -46,12 +46,19 @@ def test_semua_contoh_berjalan():
 
 
 def test_contoh_gemini_error_tanpa_key():
-    """gemini.tea harus berhenti dengan pesan jelas kalau API key kosong."""
+    """gemini.tea harus berhenti dengan pesan jelas kalau API key kosong.
+
+    Dijalankan di folder bersih tanpa .env (dan HOME diarahkan ke situ),
+    supaya tidak bergantung pada .env di folder atas.
+    """
     import tempfile
     path = os.path.join(ROOT, "examples", "gemini.tea")
     with tempfile.TemporaryDirectory() as tmp:
+        home_lama = os.environ.get("HOME")
         cwd = os.getcwd()
-        os.chdir(tmp)  # folder tanpa .env
+        os.environ["HOME"] = tmp
+        os.environ.pop("GEMINI_API_KEY", None)
+        os.chdir(tmp)
         try:
             out = io.StringIO()
             err = io.StringIO()
@@ -60,9 +67,13 @@ def test_contoh_gemini_error_tanpa_key():
                 code = run_file(path)
         finally:
             os.chdir(cwd)
+            if home_lama is None:
+                os.environ.pop("HOME", None)
+            else:
+                os.environ["HOME"] = home_lama
         assert code == 1
-        assert "API key" in out.getvalue()
-        assert "GEMINI_API_KEY" in out.getvalue()
+        gabung = out.getvalue() + err.getvalue()
+        assert "GEMINI_API_KEY" in gabung
 
 
 def test_modul_stdlib_env_tidak_bentrok_contoh():

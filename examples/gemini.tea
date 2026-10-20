@@ -12,18 +12,19 @@
 
 import env
 
-let requests = pyimport("requests")
-
 env.load()
 let API_KEY = env.get("GEMINI_API_KEY", "")
 let model = env.get("GEMINI_MODEL", "gemini-flash-lite-latest")
 
+// cek key dulu, baru butuh modul requests
 if API_KEY == "" {
   print("API key belum ada.")
   print("Buat file .env berisi:  GEMINI_API_KEY=xxxxx")
   print("lalu jalankan lagi:     tea examples/gemini.tea")
   error("GEMINI_API_KEY kosong")
 }
+
+let requests = pyimport("requests")
 
 let url = "https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}"
 
