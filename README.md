@@ -21,6 +21,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - Ternary ala JS: `kondisi ? a : b`
 - Fungsi dengan closure dan `return`
 - String interpolasi ala JS: `"Halo, ${nama}!"`
+- **Method string** ala Python/JS: `s.upper()`, `"a,b".split(",")`, `s.startswith("x")`
 - Slicing ala Python: `xs[1:3]`, `s[:5]`, `xs[-2:]`, `xs[:]`
 - Operator keanggotaan: `x in daftar`, `x not in daftar`
 - **Modul**: `import math`, `from collections import sum`, dot access `math.sqrt(2)`
@@ -28,7 +29,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - **Bikin web**: `Web.app()` untuk server Flask yang handler-nya fungsi TeaScript
 - **Baca `.env`**: `import env` — konfigurasi tanpa paket Python tambahan
 - Nilai default parameter: `fn sapa(nama, sapaan = "Halo")`
-- 24 fungsi bawaan + 4 modul stdlib (`math`, `text`, `collections`, `env`)
+- 27 fungsi bawaan + 4 modul stdlib (`math`, `text`, `collections`, `env`)
 - Error dengan posisi **baris:kolom**, REPL, dan 171 test
 
 ## Instalasi
@@ -376,12 +377,31 @@ Catatan:
 
 ### String
 
-| Fungsi | Keterangan |
+String punya **dua gaya**: sebagai fungsi global (`upper(s)`) dan sebagai
+method (`s.upper()`). Keduanya sama — pilih yang paling enak. Method bisa
+dirantai: `"  x  ".trim().upper()`.
+
+| Fungsi / method | Keterangan |
 | ------ | ---------- |
-| `upper(s)` / `lower(s)` | huruf besar/kecil |
-| `trim(s)` | hapus spasi di ujung |
-| `split(s, pemisah)` | string → list (`pemisah ""` → per karakter) |
-| `join(list, pemisah)` | list → string |
+| `upper(s)` / `s.upper()` | huruf besar |
+| `lower(s)` / `s.lower()` | huruf kecil |
+| `trim(s)` / `s.trim()` | hapus spasi di ujung (alias `strip`, `lstrip`, `rstrip`) |
+| `split(s, pemisah)` / `s.split(",")` | string → list (`pemisah ""` → per karakter) |
+| `join(list, pemisah)` / `",".join(list)` | list → string |
+| `startswith(s, x)` / `s.startswith("x")` | diawali dengan |
+| `endswith(s, x)` / `s.endswith("x")` | diakhiri dengan |
+| `replace(s, a, b)` / `s.replace("a", "b")` | ganti semua kemunculan |
+| `s.find("x")` / `s.rfind("x")` | posisi (-1 kalau tidak ada) |
+| `s.count("x")` | berapa kali muncul |
+| `s.title()` / `s.capitalize()` | huruf awal besar |
+| `s.isdigit()` / `s.isalpha()` / `s.isalnum()` / `s.isspace()` | cek isi string |
+| `s.reverse()` | string terbalik |
+| `s.repeat(n)` | ulangi string n kali |
+| `s.zfill(n)` / `s.center(n, "-")` / `s.ljust(n)` / `s.rjust(n)` | atur lebar |
+| `s.removeprefix("x")` / `s.removesuffix("x")` | buang awalan/akhiran |
+
+Method yang sudah tersedia bisa dilihat lewat pesan error: coba tulis
+`s.tidakada()` — pesannya menyebut semua method yang ada.
 
 ### Keanggotaan
 

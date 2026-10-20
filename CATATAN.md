@@ -144,7 +144,35 @@ Yang dibuat:
   stdlib. Total suite: **178 lulus**.
 - README: bagian **Troubleshooting: perintah `tea` tertukar** + contoh Gemini.
 
-## 7. Ide fitur yang belum dikerjakan
+## 7. Method string (`s.upper()`) — SELESAI
+
+Permintaan: setelah `env.load()` (yang pakai titik) terasa seperti Python,
+user bertanya apakah ada `s.upper()`, `s.strip()`, `s.split()`, dst.
+Saat itu **belum ada** — hanya bentuk fungsi global `upper(s)`, dan
+`s.upper` memberi error menyesatkan `indeks string harus angka bulat`.
+
+Yang dibuat (pilihan "keduanya" — method **dan** fungsi global):
+
+- Method string ala Python/JS: `s.upper()`, `s.lower()`, `s.trim()`,
+  `s.split(",")`, `s.startswith("x")`, `s.endswith("x")`, `s.replace(a,b)`,
+  `s.find`, `s.count`, `s.title`, `s.isdigit`, `s.reverse`, `s.repeat`,
+  `s.zfill`, `s.center/ljust/rjust`, `s.removeprefix/removesuffix`, dst.
+- Bisa dirantai: `"  x  ".trim().upper()`, `"a,b".split(",")[1].upper()`.
+- Fungsi global baru: `startswith`, `endswith`, `replace`. Yang lama
+  (`upper/lower/trim/split/join`) tetap jalan — tidak ada skrip yang rusak.
+- `split(s)` tanpa pemisah → per karakter (sebelumnya pemisah wajib).
+- Implementasi: `BoundMethod` + `StringView` di `evaluator.py`. Subclass `str`
+  tidak dipakai karena `str` immutable (tidak bisa diberi atribut); jadi
+  `StringView` adalah pembungkus tipis yang menyerahkan operasi lain ke
+  string aslinya, sehingga hasil method tetap bisa dibandingkan/digabung
+  dan dipakai sebagai key dictionary.
+- Error lebih menolong: `s.tidakada()` menyebut semua method yang tersedia;
+  `s.upper_()` menyarankan versi tanpa garis bawah.
+- Tests: +8 (method, rantai, hasil tetap string, error). Total **186 lulus**.
+- README: bagian String ditulis ulang + daftar fitur; `examples/strings.tea`
+  diperluas jadi peraga method.
+
+## 8. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

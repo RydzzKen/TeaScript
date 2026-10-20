@@ -51,6 +51,331 @@ class ContinueSignal(Exception):
         self.line = line
 
 
+class BoundMethod:
+    """Fungsi yang 'menempel' pada nilai, mis. "abc".upper().
+
+    Dipakai supaya string punya gaya method seperti Python/JS
+    (`s.upper()`, `s.split(",")`) sementara fungsi global
+    (`upper(s)`, `split(s, ",")`) tetap jalan.
+    """
+
+    def __init__(self, obj, fn, nama):
+        self.obj = obj
+        self.fn = fn
+        self.nama = nama
+
+    def __call__(self, *args):
+        return self.fn(self.obj, *args)
+
+    def __repr__(self):
+        return f"<method {self.nama}>"
+
+
+class StringView:
+    """String dengan akses method: s.upper(), s.split(","), dst.
+
+    Sengaja TIDAK membuat subclass str — di Python, str bersifat immutable
+    sehingga subclass tidak bisa menambah atribut. Jadi ini pembungkus tipis
+    yang menyerahkan semua operasi lain ke string aslinya.
+    """
+
+    __slots__ = ("_s",)
+
+    def __init__(self, s):
+        self._s = s
+
+    # --- perilaku seperti string ---
+    def __str__(self):
+        return self._s
+
+    def __repr__(self):
+        return repr(self._s)
+
+    def __len__(self):
+        return len(self._s)
+
+    def __iter__(self):
+        return iter(self._s)
+
+    def __eq__(self, lain):
+        if isinstance(lain, StringView):
+            return self._s == lain._s
+        if isinstance(lain, str):
+            return self._s == lain
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(self._s)
+
+    def __contains__(self, item):
+        return item in self._s
+
+    def __getitem__(self, item):
+        return self._s[item]
+
+    def __add__(self, lain):
+        return self._s + (lain._s if isinstance(lain, StringView) else lain)
+
+    def __radd__(self, lain):
+        return lain + self._s
+
+    def __mul__(self, n):
+        return self._s * n
+
+    def __rmul__(self, n):
+        return n * self._s
+
+    def __getattr__(self, nama):
+        fn = _METHOD_STRING.get(nama)
+        if fn is None:
+            raise AttributeError(nama)
+        return BoundMethod(self, fn, nama)
+
+
+def _semua_string(*nilai):
+    """Pastikan semua argumen string; pesan error menyebut nama fungsi."""
+    for v in nilai:
+        if not isinstance(v, str):
+            raise RuntimeErrorTea(
+                f"argumen harus string, diberi {type(v).__name__}")
+
+
+def _str_upper(s):
+    return s.upper()
+
+
+def _str_lower(s):
+    return s.lower()
+
+
+def _str_trim(s):
+    return s.strip()
+
+
+def _str_lstrip(s):
+    return s.lstrip()
+
+
+def _str_rstrip(s):
+    return s.rstrip()
+
+
+def _str_split(s, sep=None):
+    if sep is None or sep == "":
+        return list(s)
+    _semua_string(sep)
+    return s.split(sep)
+
+
+def _str_splitlines(s):
+    return s.splitlines()
+
+
+def _str_join(s, lst):
+    if not isinstance(lst, list):
+        raise RuntimeErrorTea(
+            f"join() membutuhkan list, diberi {type(lst).__name__}")
+    return s.join(_teks(v) for v in lst)
+
+
+def _teks(v):
+    if isinstance(v, StringView):
+        return v._s
+    if v is None:
+        return "nil"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    return str(v)
+
+
+def _str_startswith(s, awalan, mulai=0):
+    _semua_string(awalan)
+    if isinstance(mulai, bool) or not isinstance(mulai, (int, float)):
+        raise RuntimeErrorTea("startswith(): argumen kedua harus angka")
+    return s.startswith(awalan, int(mulai))
+
+
+def _str_endswith(s, akhiran):
+    _semua_string(akhiran)
+    return s.endswith(akhiran)
+
+
+def _str_replace(s, lama, baru, jumlah=None):
+    _semua_string(lama, baru)
+    if jumlah is not None:
+        if isinstance(jumlah, bool) or not isinstance(jumlah, (int, float)):
+            raise RuntimeErrorTea("replace(): jumlah harus angka")
+        return s.replace(lama, baru, int(jumlah))
+    return s.replace(lama, baru)
+
+
+def _str_find(s, sub, mulai=0):
+    _semua_string(sub)
+    return s.find(sub, int(mulai) if not isinstance(mulai, bool)
+                    and isinstance(mulai, (int, float)) else 0)
+
+
+def _str_rfind(s, sub):
+    _semua_string(sub)
+    return s.rfind(sub)
+
+
+def _str_index(s, sub):
+    _semua_string(sub)
+    pos = s.find(sub)
+    if pos < 0:
+        raise RuntimeErrorTea(f"'{sub}' tidak ditemukan di string")
+    return pos
+
+
+def _str_count(s, sub):
+    _semua_string(sub)
+    return s.count(sub)
+
+
+def _str_title(s):
+    return s.title()
+
+
+def _str_capitalize(s):
+    return s.capitalize()
+
+
+def _str_swapcase(s):
+    return s.swapcase()
+
+
+def _str_isdigit(s):
+    return s.isdigit()
+
+
+def _str_isalpha(s):
+    return s.isalpha()
+
+
+def _str_isalnum(s):
+    return s.isalnum()
+
+
+def _str_isspace(s):
+    return s.isspace()
+
+
+def _str_isupper(s):
+    return s.isupper()
+
+
+def _str_islower(s):
+    return s.islower()
+
+
+def _str_zfill(s, lebar):
+    if isinstance(lebar, bool) or not isinstance(lebar, (int, float)):
+        raise RuntimeErrorTea("zfill(): lebar harus angka")
+    return s.zfill(int(lebar))
+
+
+def _str_repeat(s, n):
+    if isinstance(n, bool) or not isinstance(n, (int, float)):
+        raise RuntimeErrorTea("repeat(): n harus angka")
+    return s * int(n)
+
+
+def _str_reverse(s):
+    return s[::-1]
+
+
+def _str_center(s, lebar, isi=" "):
+    if isinstance(lebar, bool) or not isinstance(lebar, (int, float)):
+        raise RuntimeErrorTea("center(): lebar harus angka")
+    _semua_string(isi)
+    return s.center(int(lebar), isi)
+
+
+def _str_ljust(s, lebar, isi=" "):
+    if isinstance(lebar, bool) or not isinstance(lebar, (int, float)):
+        raise RuntimeErrorTea("ljust(): lebar harus angka")
+    _semua_string(isi)
+    return s.ljust(int(lebar), isi)
+
+
+def _str_rjust(s, lebar, isi=" "):
+    if isinstance(lebar, bool) or not isinstance(lebar, (int, float)):
+        raise RuntimeErrorTea("rjust(): lebar harus angka")
+    _semua_string(isi)
+    return s.rjust(int(lebar), isi)
+
+
+def _str_removeprefix(s, awalan):
+    _semua_string(awalan)
+    return s[len(awalan):] if s.startswith(awalan) else s
+
+
+def _str_removesuffix(s, akhiran):
+    _semua_string(akhiran)
+    if akhiran and s.endswith(akhiran):
+        return s[:-len(akhiran)]
+    return s
+
+
+def _str_isdigit_kosong(s):
+    return s.isdecimal()
+
+
+# Nama method → implementasi. Dipakai baik sebagai method (s.upper())
+# maupun sebagai fungsi global (upper(s)).
+_METHOD_STRING = {
+    # wajib ada untuk kompatibilitas nama lama
+    "upper": _str_upper,
+    "lower": _str_lower,
+    "trim": _str_trim,
+    "strip": _str_trim,
+    "split": _str_split,
+    "join": _str_join,
+    "len": lambda s: len(s),
+    "includes": lambda s, item: _teks(item) in s,
+    # tambahan
+    "startswith": _str_startswith,
+    "endswith": _str_endswith,
+    "replace": _str_replace,
+    "find": _str_find,
+    "rfind": _str_rfind,
+    "index": _str_index,
+    "count": _str_count,
+    "title": _str_title,
+    "capitalize": _str_capitalize,
+    "swapcase": _str_swapcase,
+    "lstrip": _str_lstrip,
+    "rstrip": _str_rstrip,
+    "splitlines": _str_splitlines,
+    "isdigit": _str_isdigit,
+    "isalpha": _str_isalpha,
+    "isalnum": _str_isalnum,
+    "isspace": _str_isspace,
+    "isupper": _str_isupper,
+    "islower": _str_islower,
+    "isdecimal": _str_isdigit_kosong,
+    "zfill": _str_zfill,
+    "repeat": _str_repeat,
+    "reverse": _str_reverse,
+    "center": _str_center,
+    "ljust": _str_ljust,
+    "rjust": _str_rjust,
+    "removeprefix": _str_removeprefix,
+    "removesuffix": _str_removesuffix,
+}
+
+# Nama yang hanya masuk akal sebagai method (tidak dipakai sebagai
+# fungsi global supaya namespace global tetap ramping).
+HANYA_METHOD = {
+    "strip", "lstrip", "rstrip", "splitlines", "isdigit", "isalpha",
+    "isalnum", "isspace", "isupper", "islower", "isdecimal", "zfill",
+    "repeat", "reverse", "center", "ljust", "rjust", "removeprefix",
+    "removesuffix", "rfind", "index", "count", "title", "capitalize",
+    "swapcase",
+}
+
+
 class Function:
     def __init__(self, name, params, body, closure, evaluator=None,
                  defaults=None):
@@ -185,30 +510,28 @@ class Evaluator:
             if not isinstance(s, str):
                 raise RuntimeErrorTea(
                     f"upper() membutuhkan string, diberi {self.type_name(s)}")
-            return s.upper()
+            return _str_upper(s)
 
         def tea_lower(s):
             if not isinstance(s, str):
                 raise RuntimeErrorTea(
                     f"lower() membutuhkan string, diberi {self.type_name(s)}")
-            return s.lower()
+            return _str_lower(s)
 
         def tea_trim(s):
             if not isinstance(s, str):
                 raise RuntimeErrorTea(
                     f"trim() membutuhkan string, diberi {self.type_name(s)}")
-            return s.strip()
+            return _str_trim(s)
 
-        def tea_split(s, sep):
+        def tea_split(s, sep=None):
             if not isinstance(s, str):
                 raise RuntimeErrorTea(
                     f"split() membutuhkan string, diberi {self.type_name(s)}")
-            if not isinstance(sep, str):
+            if sep is not None and not isinstance(sep, str):
                 raise RuntimeErrorTea(
                     f"split(): pemisah harus string, diberi {self.type_name(sep)}")
-            if sep == "":
-                return list(s)
-            return s.split(sep)
+            return _str_split(s, sep)
 
         def tea_join(lst, sep):
             if not isinstance(lst, list):
@@ -217,7 +540,28 @@ class Evaluator:
             if not isinstance(sep, str):
                 raise RuntimeErrorTea(
                     f"join(): pemisah harus string, diberi {self.type_name(sep)}")
-            return sep.join(self.to_string(v) for v in lst)
+            return _str_join(sep, lst)
+
+        def tea_startswith(s, awalan):
+            if not isinstance(s, str):
+                raise RuntimeErrorTea(
+                    f"startswith() membutuhkan string, diberi {self.type_name(s)}")
+            _semua_string(awalan)
+            return _str_startswith(s, awalan)
+
+        def tea_endswith(s, akhiran):
+            if not isinstance(s, str):
+                raise RuntimeErrorTea(
+                    f"endswith() membutuhkan string, diberi {self.type_name(s)}")
+            _semua_string(akhiran)
+            return _str_endswith(s, akhiran)
+
+        def tea_replace(s, lama, baru):
+            if not isinstance(s, str):
+                raise RuntimeErrorTea(
+                    f"replace() membutuhkan string, diberi {self.type_name(s)}")
+            _semua_string(lama, baru)
+            return _str_replace(s, lama, baru)
 
         def tea_abs(x):
             if isinstance(x, bool) or not isinstance(x, (int, float)):
@@ -294,6 +638,9 @@ class Evaluator:
         self.globals.declare("trim", tea_trim)
         self.globals.declare("split", tea_split)
         self.globals.declare("join", tea_join)
+        self.globals.declare("startswith", tea_startswith)
+        self.globals.declare("endswith", tea_endswith)
+        self.globals.declare("replace", tea_replace)
         self.globals.declare("abs", tea_abs)
         self.globals.declare("min", tea_min)
         self.globals.declare("max", tea_max)
@@ -962,6 +1309,20 @@ class Evaluator:
                 raise RuntimeErrorTea(f"key '{index}' tidak ada di dictionary", line)
             return target[index]
         if isinstance(target, str):
+            if isinstance(index, str):
+                # Method string: s.upper, s.split, dst. Dipanggil nanti
+                # lewat call() karena hasilnya BoundMethod (callable).
+                fn = _METHOD_STRING.get(index)
+                if fn is None:
+                    dasar = index.replace("_", ".")
+                    if dasar in _METHOD_STRING:
+                        raise RuntimeErrorTea(
+                            f"'{index}' bukan nama method yang ada. "
+                            f"Mungkin maksudmu '{dasar}' (pakai titik)", line)
+                    raise RuntimeErrorTea(
+                        f"string tidak punya '{index}'. Method yang ada: "
+                        + ", ".join(sorted(_METHOD_STRING)), line)
+                return BoundMethod(target, fn, index)
             if not isinstance(index, int) or isinstance(index, bool):
                 raise RuntimeErrorTea("indeks string harus angka bulat", line)
             if index < 0 or index >= len(target):

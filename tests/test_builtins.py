@@ -99,6 +99,75 @@ def test_string_function_error():
     assert "split()" in e.message
 
 
+# --- method string (gaya Python/JS) ---
+def test_method_string_dasar():
+    assert capture('print("abc".upper())') == "ABC\n"
+    assert capture('print("ABC".lower())') == "abc\n"
+    assert capture('print("  x  ".trim())') == "x\n"
+    assert capture('print("a,b,c".split(","))') == '["a", "b", "c"]\n'
+    assert capture('print(",".join(["a", "b"]))') == "a,b\n"
+
+
+def test_method_string_bisa_dirantai():
+    assert capture('print("  halo  ".trim().upper())') == "HALO\n"
+    assert capture('print("a,b".split(",")[1].upper())') == "B\n"
+
+
+def test_method_string_baru():
+    assert capture('print("halo".startswith("ha"))') == "true\n"
+    assert capture('print("halo".endswith("lo"))') == "true\n"
+    assert capture('print("a-b".replace("-", "+"))') == "a+b\n"
+    assert capture('print("halo dunia".title())') == "Halo Dunia\n"
+    assert capture('print("abc".find("c"))') == "2\n"
+    assert capture('print("abc".count("a"))') == "1\n"
+    assert capture('print("42".isdigit())') == "true\n"
+    assert capture('print("abc".reverse())') == "cba\n"
+    assert capture('print("7".zfill(3))') == "007\n"
+    assert capture('print("ab".repeat(3))') == "ababab\n"
+    assert capture('print("x".center(3, "-"))') == "-x-\n"
+    assert capture('print("hello".removeprefix("he"))') == "llo\n"
+    assert capture('print("hello".removesuffix("lo"))') == "hel\n"
+
+
+def test_fungsi_global_baru():
+    assert capture('print(startswith("halo", "ha"))') == "true\n"
+    assert capture('print(endswith("halo", "lo"))') == "true\n"
+    assert capture('print(replace("abc", "b", "X"))') == "aXc\n"
+
+
+def test_split_tanpa_pemisah():
+    # split(s) tanpa pemisah → per karakter (sama seperti split(s, ""))
+    assert capture('print("abc".split())') == '["a", "b", "c"]\n'
+
+
+def test_hasil_method_tetap_string_biasa():
+    # hasil method harus bisa dibandingkan, digabung, dan dipakai sebagai key
+    assert capture('print("abc".upper() == "ABC")') == "true\n"
+    assert capture('print("abc".upper() + "!")') == "ABC!\n"
+    assert capture('print(len("abc".upper()))') == "3\n"
+    assert capture('print(type("abc".upper()))') == "string\n"
+    assert capture('print({"ABC": 1}["abc".upper()])') == "1\n"
+
+
+def test_method_string_error():
+    e = expect_error('print("abc".tidakada())')
+    assert "tidak punya" in e.message
+    # pesan menyebut method yang tersedia supaya mudah diperbaiki
+    assert "upper" in e.message
+
+    e = expect_error('print("abc".upper(1))')
+    assert "argumen" in e.message
+
+    e = expect_error('print("abc".replace("a", 1))')
+    assert "string" in e.message
+
+
+def test_method_string_saran_pakai_titik():
+    # menulis s.upper_tidak ada → sarankan versi yang benar
+    e = expect_error('print("abc".upper_())')
+    assert "upper_" in e.message
+
+
 # --- angka ---
 def test_abs_min_max():
     assert capture("print(abs(-5), abs(2.5))") == "5 2.5\n"
