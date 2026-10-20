@@ -1,0 +1,48 @@
+// Server web di dalam TeaScript.
+//
+// Dua cara, pilih salah satu:
+//   let app = Web.app("teascript")     // ringkas, route aman (deteksi duplikat)
+//   let app = pyimport("flask").Flask() // Flask mentah, kontrol penuh
+//
+// Jalankan: tea-web examples/web.tea   (atau: python3 webapp.py examples/web.tea)
+// Buka:     http://127.0.0.1:5000
+
+let app = Web.app("teascript")
+
+fn home() {
+  return "<h1>TeaScript web</h1><p>Halaman ini dibuat oleh examples/web.tea</p>"
+}
+
+fn sapa(nama) {
+  return "Halo, ${nama}!"
+}
+
+fn tugas() {
+  let daftar = ["Belajar TeaScript", "Bikin modul", "Bikin web"]
+  let html = "<ul>"
+  for t in daftar {
+    html += "<li>${t}</li>"
+  }
+  return html + "</ul>"
+}
+
+fn info() {
+  // nilai balik dict otomatis jadi JSON
+  return {
+    nama: "TeaScript",
+    versi: "0.3.0",
+    fitur: ["import", "pyimport", "web", "modul"]
+  }
+}
+
+fn umur(usia) {
+  return usia * 2
+}
+
+app.route("/")(home)
+app.route("/sapa/<nama>")(sapa)
+app.route("/tugas")(tugas)
+app.route("/info")(info)
+app.route("/usia/<int:usia>")(umur)
+
+app.run()

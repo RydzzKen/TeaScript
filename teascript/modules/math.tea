@@ -1,0 +1,59 @@
+// Modul matematika TeaScript — ditulis dalam TeaScript sendiri.
+// Dipakai: import math
+
+let PI = 3.141592653589793
+let E = 2.718281828459045
+
+// Akar kuadrat — metode Newton-Raphson.
+// Nilai negatif mengembalikan nil (math tidak mendefinisikan akar bilangan negatif).
+fn sqrt(x) {
+  if x < 0 { return nil }
+  if x == 0 { return 0 }
+  let guess = x
+  for i in range(50) {
+    guess = (guess + x / guess) / 2
+  }
+  return guess
+}
+
+// Pangkat dengan eksponen bulat. Eksponen pecahan → nil.
+fn pow(base, exp) {
+  if exp % 1 != 0 { return nil }
+  let negatif = exp < 0
+  let sisa = negatif ? -exp : exp
+  let hasil = 1
+  while sisa > 0 {
+    hasil *= base
+    sisa -= 1
+  }
+  return negatif ? 1 / hasil : hasil
+}
+
+fn round(x) {
+  let b = x % 1
+  if b >= 0.5 { return x - b + 1 }
+  if b <= -0.5 { return x - b - 1 }
+  return x - b
+}
+
+fn floor(x) {
+  let b = x % 1
+  if b == 0 { return x }
+  return x > 0 ? x - b : x - b - 1
+}
+
+fn ceil(x) {
+  let b = x % 1
+  if b == 0 { return x }
+  return x > 0 ? x - b + 1 : x - b
+}
+
+fn clamp(v, lo, hi) {
+  if v < lo { return lo }
+  if v > hi { return hi }
+  return v
+}
+
+fn lerp(a, b, t) {
+  return a + (b - a) * t
+}

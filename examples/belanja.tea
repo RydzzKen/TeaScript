@@ -1,0 +1,26 @@
+// Keranjang belanja — dictionary, list, operator `in`
+fn jumlah_item(xs) {
+  let sum = 0
+  for x in xs {
+    sum += x
+  }
+  return sum
+}
+
+let keranjang = {"apel": 3, "pisang": 2}
+keranjang["jeruk"] = 5
+
+for buah in keys(keranjang) {
+  print(buah, "->", keranjang[buah])
+}
+
+if "mangga" in keranjang {
+  print("mangga tersedia")
+} else {
+  print("mangga tidak tersedia")
+}
+
+let buah_list = values(keranjang)
+push(buah_list, 4)
+print("Total item:", jumlah_item(buah_list))
+print("Jenis buah:", len(keranjang))

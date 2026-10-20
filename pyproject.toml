@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teascript"
+version = "0.3.0"
+description = "TeaScript: bahasa skrip kecil bergaya JavaScript/Python, diimplementasikan di Python"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [{ name = "TeaScript contributors" }]
+keywords = ["interpreter", "language", "scripting", "toy-language", "teascript"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Interpreters",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/RydzzKen/teascript"
+Repository = "https://github.com/RydzzKen/teascript"
+Issues = "https://github.com/RydzzKen/teascript/issues"
+Changelog = "https://github.com/RydzzKen/teascript/releases"
+
+[project.scripts]
+tea = "teascript.cli:main"
+tea-web = "teascript.web:main"
+
+[project.optional-dependencies]
+web = ["flask>=3.0"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools]
+packages = ["teascript"]
+
+[tool.setuptools.package-data]
+teascript = ["modules/*.tea"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

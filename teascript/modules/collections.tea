@@ -1,0 +1,56 @@
+// Modul koleksi TeaScript — operasi list tambahan.
+// Dipakai: import collections
+
+fn sum(xs) {
+  let total = 0
+  for x in xs {
+    total += x
+  }
+  return total
+}
+
+fn product(xs) {
+  let hasil = 1
+  for x in xs {
+    hasil *= x
+  }
+  return hasil
+}
+
+fn reverse(xs) {
+  let out = []
+  for i in range(len(xs) - 1, -1, -1) {
+    push(out, xs[i])
+  }
+  return out
+}
+
+fn unique(xs) {
+  let out = []
+  for x in xs {
+    if not (x in out) {
+      push(out, x)
+    }
+  }
+  return out
+}
+
+fn count(xs, v) {
+  let n = 0
+  for x in xs {
+    if x == v {
+      n += 1
+    }
+  }
+  return n
+}
+
+fn flatten(xss) {
+  let out = []
+  for xs in xss {
+    for x in xs {
+      push(out, x)
+    }
+  }
+  return out
+}

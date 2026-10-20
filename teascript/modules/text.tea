@@ -1,0 +1,41 @@
+// Modul teks TeaScript — helper string di atas fungsi bawaan.
+// Dipakai: import text
+
+fn capitalize(s) {
+  if len(s) == 0 { return s }
+  return upper(s[0:1]) + s[1:]
+}
+
+fn title(s) {
+  let hasil = []
+  for kata in split(lower(s), " ") {
+    push(hasil, capitalize(kata))
+  }
+  return join(hasil, " ")
+}
+
+fn repeat(s, n) {
+  if n <= 0 { return "" }
+  let out = ""
+  for i in range(n) {
+    out += s
+  }
+  return out
+}
+
+fn replace_all(s, old, baru) {
+  return join(split(s, old), baru)
+}
+
+fn is_blank(s) {
+  return len(trim(s)) == 0
+}
+
+fn starts_with(s, awalan) {
+  return s[0:len(awalan)] == awalan
+}
+
+fn ends_with(s, akhiran) {
+  if len(akhiran) > len(s) { return false }
+  return s[len(s) - len(akhiran):] == akhiran
+}

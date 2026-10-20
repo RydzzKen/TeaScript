@@ -1,0 +1,10 @@
+// pyimport — pakai library Python langsung dari TeaScript
+let m = pyimport("math")
+let json = pyimport("json")
+
+print("sqrt(144):", m.sqrt(144))
+print("pi      :", m.pi)
+
+let data = {nama: "Ken", nilai: [1, 2, 3], aktif: true, catatan: nil}
+print("json    :", json.dumps(data))
+print("tipe m  :", type(m))
