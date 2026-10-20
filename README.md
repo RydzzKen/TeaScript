@@ -26,7 +26,9 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - **Modul**: `import math`, `from collections import sum`, dot access `math.sqrt(2)`
 - **Interop Python**: `let m = pyimport("math")` → pakai library Python apa pun
 - **Bikin web**: `Web.app()` untuk server Flask yang handler-nya fungsi TeaScript
-- 20 fungsi bawaan + 3 modul stdlib (`math`, `text`, `collections`)
+- **Baca `.env`**: `import env` — konfigurasi tanpa paket Python tambahan
+- Nilai default parameter: `fn sapa(nama, sapaan = "Halo")`
+- 24 fungsi bawaan + 4 modul stdlib (`math`, `text`, `collections`, `env`)
 - Error dengan posisi **baris:kolom**, REPL, dan 135 test
 
 ## Instalasi
@@ -191,8 +193,18 @@ fn tambah(a, b) {
 }
 print(tambah(2, 3))   // 5
 
+// Nilai default untuk parameter (opsional)
+fn sapa(nama, sapaan = "Halo") {
+  return sapaan + ", " + nama
+}
+print(sapa("Ken"))          // Halo, Ken
+print(sapa("Ken", "Yo"))    // Yo, Ken
+
 fn tanpaNilai() { return }   // return tanpa nilai → nil
 ```
+
+Aturan default: parameter ber-default harus berada **setelah** parameter wajib
+(sama seperti Python), dan nilainya dievaluasi **tiap pemanggilan**.
 
 ### String
 
@@ -265,8 +277,38 @@ Aturan:
 | `math` | `PI`, `E`, `sqrt`, `pow`, `round`, `floor`, `ceil`, `clamp`, `lerp` |
 | `text` | `capitalize`, `title`, `repeat`, `replace_all`, `is_blank`, `starts_with`, `ends_with` |
 | `collections` | `sum`, `product`, `reverse`, `unique`, `count`, `flatten` |
+| `env` | `load`, `get`, `get_num`, `get_bool`, `wajib`, `semua`, `parse`, `reset` |
 
 Bikin modul sendiri cukup simpan `namamu.tea` di folder yang sama dengan script, lalu `import namamu`.
+
+### Modul `env` — baca file `.env`
+
+Tanpa paket Python tambahan (beda dengan `python-dotenv`):
+
+```tea
+import env
+
+env.load()                       // cari .env dari folder ini naik ke atas
+let nama = env.get("NAMA", "tanpa nama")
+let port = env.get_num("PORT", 5000)
+let debug = env.get_bool("DEBUG", false)
+let rahasia = env.wajib("API_KEY")   // error jelas kalau tidak ada
+```
+
+Fitur: komentar `#`, kutip `"..."` / `'...'`, `export KUNCI=...`,
+interpolasi `${VAR}` dan `$VAR`, nilai dari OS ikut terbaca, dan `.env`
+di folder induk tetap ditemukan saat dijalankan dari subfolder.
+
+| Fungsi | Kegunaan |
+| ------ | -------- |
+| `load(path = nil, override = false)` | muat file `.env`; `true` kalau berhasil |
+| `get(nama, default = nil)` | ambil nilai: OS → hasil `load()` → default |
+| `get_num(nama, default = nil)` | versi angka |
+| `get_bool(nama, default = nil)` | versi boolean (`1/true/yes/on`) |
+| `wajib(nama)` | seperti `get`, tapi error kalau tidak ada |
+| `semua()` | dict semua nilai yang dimuat dari file |
+| `parse(isi)` | uraikan teks `.env` jadi dict (tanpa menyentuh OS) |
+| `reset()` | kosongkan hasil `load()` |
 
 ---
 
@@ -342,6 +384,15 @@ Catatan:
 | ------ | ---------- |
 | `includes(wadah, x)` | sama dengan `x in wadah` |
 
+### Sistem & diagnostik
+
+| Fungsi | Keterangan |
+| ------ | ---------- |
+| `error(...)` | hentikan program dengan pesan sendiri |
+| `getenv(nama, default)` | ambil variabel lingkungan OS |
+| `setenv(nama, nilai)` | set variabel lingkungan OS |
+| `pyimport(nama)` | muat modul Python |
+
 ---
 
 ## Catatan Semantik
@@ -404,7 +455,7 @@ tea-web              # playground + API di http://127.0.0.1:5000
 python3 -m pytest
 ```
 
-141 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), packaging, dan CLI.
+161 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), modul `env`, default parameter, packaging, dan CLI.
 
 ## Struktur Proyek
 
@@ -425,7 +476,7 @@ TeaScript/
 │   ├── repl.py         # REPL interaktif
 │   ├── web.py          # server Flask (API + tea-web)
 │   ├── cli.py          # argumen command line
-│   └── modules/        # stdlib TeaScript: math, text, collections
+│   └── modules/        # stdlib TeaScript: math, text, collections, env
 ├── examples/           # contoh program .tea
 └── tests/              # unit test
 ```

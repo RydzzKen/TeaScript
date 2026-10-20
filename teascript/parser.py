@@ -127,15 +127,30 @@ class Parser:
         name_tok = self.expect(IDENT, msg="diharapkan nama fungsi setelah 'fn'")
         self.expect(PUNCT, "(", msg="diharapkan '(' setelah nama fungsi")
         params = []
+        defaults = {}
         if not self.check(PUNCT, ")"):
-            params.append(self.param_name())
+            nama = self.param_name()
+            params.append(nama)
+            defaults[nama] = self.expression() if self.match(OP, "=") else None
             while self.match(PUNCT, ","):
-                params.append(self.param_name())
+                nama = self.param_name()
+                params.append(nama)
+                defaults[nama] = self.expression() if self.match(OP, "=") else None
         self.expect(PUNCT, ")", msg="diharapkan ')' setelah parameter")
+        sudah_default = False
+        for p in params:
+            if defaults[p] is None:
+                if sudah_default:
+                    raise SyntaxErrorTea(
+                        f"parameter '{p}' tidak punya nilai default, tapi ada "
+                        f"parameter setelahnya yang punya default",
+                        name_tok.line, name_tok.column)
+            else:
+                sudah_default = True
         self.expect(PUNCT, "{", msg="diharapkan '{' untuk badan fungsi")
         body = self.block()
         return ast.FnDef(name=name_tok.value, params=params,
-                         body=body, line=tok.line)
+                         defaults=defaults, body=body, line=name_tok.line)
 
     def param_name(self):
         """Nama parameter. Keyword juga boleh (agar cocok dengan API Python,

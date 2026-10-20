@@ -80,7 +80,33 @@ Belum (butuh akun/tindakan pemilik):
 3. Setelah terbit: tambah badge PyPI + `pip install teascript` di README (sudah ada,
    tinggal aktif).
 
-## 4. Ide fitur yang belum dikerjakan
+## 4. Modul `env` + default parameter — SELESAI (permintaan: `from dotenv import load_dotenv`)
+
+Latar: `from dotenv import load_dotenv` tidak bisa di TeaScript (`from`/`import`
+hanya mencari file `.tea`, bukan modul Python), dan `python-dotenv` punya masalah
+`find_dotenv()` saat dipanggil dari TeaScript (ia menebak lewat stack frame dan
+melihat `evaluator.py`, bukan file `.tea`).
+
+Keputusan: **bikin sendiri** — modul `env` bawaan, murni TeaScript.
+
+Yang dibuat:
+
+- `teascript/modules/env.tea`: `load`, `get`, `get_num`, `get_bool`, `wajib`,
+  `semua`, `parse`, `reset`. Dukung komentar `#`, kutip, `export`, interpolasi
+  `${VAR}`/`$VAR`, cari `.env` naik ke folder induk. Tanpa paket Python tambahan.
+- Builtin baru: `error(...)`, `getenv(nama, default)`, `setenv(nama, nilai)`.
+- Fitur bahasa baru: **nilai default parameter** — `fn sapa(nama, sapaan = "Halo")`.
+  Parameter ber-default wajib setelah parameter wajib; dievaluasi tiap panggilan.
+- Perbaikan: file yang sedang berjalan tidak boleh `import` dirinya sendiri
+  (mis. `examples/env.tea` → ambil modul stdlib `env`), dan impor melingkar
+  murni tetap memberi pesan `import melingkar: a.tea -> b.tea -> a.tea`.
+- Test: `tests/test_features_env.py` (22 test). Total suite: **163 lulus**.
+- Contoh: `examples/env.tea`.
+
+Catatan: `pyimport("dotenv")` tetap bisa dipakai, tapi `load_dotenv()` tanpa
+argumen tidak bekerja (akar masalah di `find_dotenv`). Pakai `import env` saja.
+
+## 5. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

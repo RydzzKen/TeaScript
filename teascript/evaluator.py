@@ -52,9 +52,11 @@ class ContinueSignal(Exception):
 
 
 class Function:
-    def __init__(self, name, params, body, closure, evaluator=None):
+    def __init__(self, name, params, body, closure, evaluator=None,
+                 defaults=None):
         self.name = name
         self.params = params
+        self.defaults = defaults or {}
         self.body = body
         self.closure = closure
         self.evaluator = evaluator
@@ -255,6 +257,26 @@ class Evaluator:
                 raise RuntimeErrorTea(
                     f"pyimport(): gagal memuat '{name}': {e}")
 
+        def tea_error(*args):
+            """Hentikan program dengan pesan sendiri: error(\"ada masalah\")"""
+            pesan = " ".join(self.to_string(a) for a in args)
+            raise RuntimeErrorTea(pesan)
+
+        def tea_getenv(nama, default=None):
+            """Ambil variabel lingkungan OS. getenv(\"HOME\"), getenv(\"X\", \"-\")"""
+            if not isinstance(nama, str):
+                raise RuntimeErrorTea(
+                    f"getenv() membutuhkan string, diberi {self.type_name(nama)}")
+            v = os.environ.get(nama)
+            return v if v is not None else default
+
+        def tea_setenv(nama, nilai):
+            """Set variabel lingkungan OS. setenv(\"MODE\", \"dev\")"""
+            if not isinstance(nama, str) or not isinstance(nilai, str):
+                raise RuntimeErrorTea("setenv() membutuhkan (string, string)")
+            os.environ[nama] = nilai
+            return nilai
+
         self.globals.declare("print", tea_print)
         self.globals.declare("len", tea_len)
         self.globals.declare("input", tea_input)
@@ -276,6 +298,9 @@ class Evaluator:
         self.globals.declare("min", tea_min)
         self.globals.declare("max", tea_max)
         self.globals.declare("pyimport", tea_pyimport)
+        self.globals.declare("error", tea_error)
+        self.globals.declare("getenv", tea_getenv)
+        self.globals.declare("setenv", tea_setenv)
 
     # --- Utility ---
     def type_name(self, value):
@@ -418,9 +443,12 @@ class Evaluator:
         self.globals.declare("Web", WebModule())
 
     # --- Entry ---
-    def run(self, program, base_dir=None):
+    def run(self, program, base_dir=None, script_path=None):
         if base_dir is not None:
             self.base_dir = base_dir
+        if script_path is not None:
+            # daftarkan file utama supaya `import` tidak memuat dirinya sendiri
+            self.module_stack.append(os.path.abspath(script_path))
         try:
             for stmt in program.statements:
                 self.execute(stmt, self.globals)
@@ -428,6 +456,9 @@ class Evaluator:
             raise RuntimeErrorTea("'break' di luar loop", s.line)
         except ContinueSignal as s:
             raise RuntimeErrorTea("'continue' di luar loop", s.line)
+        finally:
+            if script_path is not None:
+                self.module_stack.pop()
 
     # --- Sistem modul ---
     def resolve_module(self, name, path, line):
@@ -445,10 +476,23 @@ class Evaluator:
         search_dirs += [d for d in
                         os.environ.get("TEASCRIPT_PATH", "").split(os.pathsep)
                         if d]
+        # File yang sedang berjalan tidak boleh mengimpor dirinya sendiri:
+        # lewati, biar jatuh ke stdlib/TEASCRIPT_PATH (mis. examples/env.tea
+        # yang ingin memakai modul stdlib `env`).
+        sedang_jalan = set(os.path.abspath(p) for p in self.module_stack)
+        kandidat_dilewati = []
         for d in search_dirs:
-            candidate = os.path.join(d, name + ".tea")
+            candidate = os.path.abspath(os.path.join(d, name + ".tea"))
+            if candidate in sedang_jalan:
+                kandidat_dilewati.append(candidate)
+                continue
             if os.path.isfile(candidate):
-                return os.path.abspath(candidate)
+                return candidate
+        if kandidat_dilewati:
+            chain = " -> ".join(
+                os.path.basename(p) for p in self.module_stack
+                + [kandidat_dilewati[0]])
+            raise RuntimeErrorTea(f"import melingkar: {chain}", line)
         dicari = ", ".join(os.path.join(d, name + ".tea") for d in search_dirs)
         raise RuntimeErrorTea(
             f"modul '{name}' tidak ditemukan (dicari di: {dicari})", line)
@@ -585,7 +629,7 @@ class Evaluator:
 
         elif isinstance(node, ast.FnDef):
             fn = Function(node.name, node.params, node.body, env,
-                          evaluator=self)
+                          evaluator=self, defaults=node.defaults)
             env.declare(node.name, fn)
 
         elif isinstance(node, ast.Return):
@@ -823,10 +867,7 @@ class Evaluator:
                 raise RuntimeErrorTea(
                     "keyword argument (let _nama = ...) hanya untuk fungsi Python",
                     line)
-            if len(args) != len(callee.params):
-                raise RuntimeErrorTea(
-                    f"fungsi '{callee.name}' butuh {len(callee.params)} argumen, "
-                    f"diberi {len(args)}", line)
+            args = self._isi_default(callee, args, line)
             return self.invoke(callee, args, line)
         if callable(callee):
             try:
@@ -840,9 +881,31 @@ class Evaluator:
             return self.from_python(result)
         raise RuntimeErrorTea("nilai tidak bisa dipanggil", line)
 
+    def _isi_default(self, fn, args, line):
+        """Lengkapi argumen yang kurang dengan nilai default parameternya."""
+        params = fn.params
+        if len(args) > len(params):
+            raise RuntimeErrorTea(
+                f"fungsi '{fn.name}' butuh maksimal {len(params)} argumen, "
+                f"diberi {len(args)}", line)
+        if len(args) == len(params):
+            return args
+        hasil = list(args)
+        for p in params[len(args):]:
+            if p not in fn.defaults or fn.defaults[p] is None:
+                butuh = sum(1 for x in params
+                            if x not in fn.defaults or fn.defaults[x] is None)
+                raise RuntimeErrorTea(
+                    f"fungsi '{fn.name}' butuh minimal {butuh} argumen, "
+                    f"diberi {len(args)}", line)
+            hasil.append(self.evaluate(fn.defaults[p], fn.closure))
+        return hasil
+
     def invoke(self, fn, args, line=None):
         """Jalankan fungsi TeaScript dengan argumen yang sudah siap."""
         local = Environment(parent=fn.closure)
+        if len(args) < len(fn.params):
+            args = self._isi_default(fn, list(args), line)
         for p, a in zip(fn.params, args):
             local.declare(p, a)
         try:

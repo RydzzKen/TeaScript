@@ -174,6 +174,7 @@ class FromImport(Node):
 class FnDef(Node):
     name: str = ""
     params: list = field(default_factory=list)
+    defaults: dict = field(default_factory=dict)
     body: list = field(default_factory=list)
 
 

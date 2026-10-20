@@ -43,7 +43,7 @@ def run_file(path):
         tokens = Lexer(source).tokenize()
         program = Parser(tokens).parse()
         base_dir = os.path.dirname(os.path.abspath(path))
-        Evaluator().run(program, base_dir=base_dir)
+        Evaluator().run(program, base_dir=base_dir, script_path=path)
         return 0
     except TeaError as e:
         print(e.format(), file=sys.stderr)
