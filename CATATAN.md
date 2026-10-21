@@ -1,7 +1,7 @@
 # Catatan Proyek
 
 Dokumen kerja TeaScript: keputusan yang bisa berubah, pekerjaan yang ditunda, dan cara melanjutkannya.
-Diperbarui: 20 Oktober 2026.
+Diperbarui: 21 Oktober 2026.
 
 ## 1. Antislop (filter kualitas UI) — DITANGGUHKAN
 
@@ -200,7 +200,49 @@ Checker itu langsung menemukan **dua bug nyata**:
 
 Total suite setelah ini: **194 lulus**.
 
-## 9. Ide fitur yang belum dikerjakan
+## 9. `try` / `catch` + output error yang lebih jelas — SELESAI
+
+Latar: script `~/Project/bots.tea` (agen file berbasis Gemini) gagal jalan dengan
+`Error (baris 22, kolom 5): diharapkan nama key di dictionary`. Penyebabnya bukan
+script-nya, tapi **TeaScript belum punya `try` / `catch`** — `try` dibaca sebagai
+identifier biasa, lalu `{` dibaca sebagai *dictionary literal*, dan `dict_pair()`
+menolak token `let`. Semua bahasa lain (JS, Python, Ruby, Go) punya `try/catch`,
+jadi ini gap yang terasa.
+
+Yang dibuat:
+
+- **Sintaks `try` / `catch`**: `try { ... } catch e { ... }` dan
+  `try { ... } catch { ... }` (tanpa variabel → error ditelan).
+  - Lexer: `try` + `catch` masuk daftar `KEYWORDS`.
+  - AST: node `Try` (`body`, `has_catch`, `catch_var`, `catch_body`).
+  - Parser: `try_stmt()`.
+  - Evaluator: `exec_try()` + `run_catch()`.
+- **Yang ikut tertangkap**: error TeaScript (runtime, nama variabel, `error()`)
+  **dan** exception Python dari `pyimport`. Exception Python asli disimpan di
+  `e.cause` supaya tidak hilang.
+- **`break` / `continue` / `return` bukan error** — keduanya tetap keluar dari
+  blok `try` seperti biasa (dicek eksplisit di `exec_try`).
+- **Objek error baru** (`CaughtError` di `errors.py`) dengan field:
+  `message`, `line`, `column`, `kind` (`"runtime"`, `"nama"`, `"sintaks"`,
+  `"python"`), `cause`. `str(e)` memberi teks lengkap dengan posisi,
+  `type(e)` = `"error"`.
+- **Output error lebih jelas**:
+  - CLI menampilkan **cuplikan baris sumber + penanda `^`** di kolom yang salah.
+  - Error dari fungsi Python menyebut **nama exception-nya**
+    (`FileNotFoundError: ...`), bukan cuma teksnya; ini membedakan jelas error
+    Python vs error TeaScript.
+  - AST kini menyimpan **kolom** (sebelumnya cuma baris), jadi caret-nya
+    menunjuk tepat. Kolom ikut di threading untuk nama variabel, pemanggilan
+    fungsi, assignment, indeks, dan operator.
+- Test: `tests/test_try_catch.py` (19 test) + 3 test CLI baru. Total suite:
+  **216 lulus**.
+- Contoh: `examples/try_catch.tea`.
+- Docs: README (bagian "Menangkap error"), `docs/AI.md` (§3 + §12 + tabel
+  kesalahan umum), dan catatan ini.
+
+Belum ada (untuk nanti): blok `finally` dan keyword `raise`.
+
+## 10. Ide fitur yang belum dikerjakan
 
 Lihat README bagian "Rencana ke Depan": arrow function, `map/filter/reduce`,
 slicing dengan step `xs[::2]`, bytecode VM.

@@ -201,6 +201,61 @@ def test_check_file_tidak_ada():
     assert "tidak ditemukan" in buf.getvalue()
 
 
+# --- output error yang lebih jelas ---
+
+def test_error_menampilkan_cuplikan_baris_sumber():
+    """Error runtime harus menampilkan baris sumbernya + penanda ^."""
+    import tempfile
+    from teascript.cli import run_file
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "salah.tea")
+        with open(path, "w") as f:
+            f.write("let x = 1\nprint(z)\n")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = run_file(path)
+        assert code == 1
+        out = err.getvalue()
+        assert "baris 2" in out
+        assert "print(z)" in out
+        assert "^" in out
+
+
+def test_error_python_sebut_nama_exception():
+    """Error dari fungsi Python harus menyebut jenis exception-nya."""
+    import tempfile
+    from teascript.cli import run_file
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "py.tea")
+        with open(path, "w") as f:
+            f.write('let os = pyimport("os")\n'
+                    'os.stat("/folder/yang/tidak/ada")\n')
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = run_file(path)
+        assert code == 1
+        assert "FileNotFoundError" in err.getvalue()
+
+
+def test_try_catch_di_file():
+    """try/catch dipakai lewat CLI: error tertangkap, program lanjut."""
+    import tempfile
+    from teascript.cli import run_file
+    with tempfile.TemporaryDirectory() as tmp:
+        path = os.path.join(tmp, "tangkap.tea")
+        with open(path, "w") as f:
+            f.write("try {\n"
+                    "  let x = 1 / 0\n"
+                    "} catch e {\n"
+                    '  print("tertangkap:", e.message)\n'
+                    "}\n")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = run_file(path)
+        assert code == 0
+        assert "tertangkap: pembagian dengan nol" in out.getvalue()
+
+
 def test_lexer_tolak_identifier_non_ascii():
     from teascript.lexer import Lexer
     from teascript.errors import SyntaxErrorTea

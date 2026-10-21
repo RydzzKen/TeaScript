@@ -7,6 +7,7 @@ from typing import Any
 @dataclass
 class Node:
     line: int = 0
+    column: int = 0
 
 
 # --- Expressions ---
@@ -145,6 +146,15 @@ class ForIn(Node):
     name: str = ""
     iterable: Node = None
     body: list = field(default_factory=list)
+
+
+@dataclass
+class Try(Node):
+    # try { ... } catch [nama] { ... }
+    body: list = field(default_factory=list)
+    has_catch: bool = False
+    catch_var: str = None      # nama variabel penampung error (boleh None)
+    catch_body: list = field(default_factory=list)
 
 
 @dataclass

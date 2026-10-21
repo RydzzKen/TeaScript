@@ -74,6 +74,8 @@ class Parser:
             return self.fn_stmt(tok)
         if self.match(KEYWORD, "return"):
             return self.return_stmt(tok)
+        if self.match(KEYWORD, "try"):
+            return self.try_stmt(tok)
         if self.match(KEYWORD, "break"):
             return ast.Break(line=tok.line)
         if self.match(KEYWORD, "continue"):
@@ -90,7 +92,8 @@ class Parser:
         name_tok = self.expect(IDENT, msg="diharapkan nama variabel setelah 'let'")
         self.expect(OP, "=", msg="diharapkan '=' setelah nama variabel")
         value = self.expression()
-        return ast.Let(name=name_tok.value, value=value, line=tok.line)
+        return ast.Let(name=name_tok.value, value=value, line=tok.line,
+                       column=name_tok.column)
 
     def if_stmt(self, tok):
         condition = self.expression()
@@ -121,7 +124,7 @@ class Parser:
         self.expect(PUNCT, "{", msg="diharapkan '{' setelah ekspresi for")
         body = self.block()
         return ast.ForIn(name=name_tok.value, iterable=iterable,
-                         body=body, line=tok.line)
+                         body=body, line=tok.line, column=name_tok.column)
 
     def fn_stmt(self, tok):
         name_tok = self.expect(IDENT, msg="diharapkan nama fungsi setelah 'fn'")
@@ -191,6 +194,28 @@ class Parser:
             value = self.expression()
         return ast.Return(value=value, line=tok.line)
 
+    def try_stmt(self, tok):
+        """try { ... } catch [nama] { ... }
+
+        Nama variabel penampung error opsional:
+          try { ... } catch e { ... }   -> e berisi objek error
+          try { ... } catch { ... }     -> error ditelan tanpa disimpan
+        """
+        self.expect(PUNCT, "{", msg="diharapkan '{' setelah try")
+        body = self.block()
+        has_catch = False
+        catch_var = None
+        catch_body = []
+        if self.match(KEYWORD, "catch"):
+            has_catch = True
+            if self.check(IDENT):
+                catch_var = self.advance().value
+            self.expect(PUNCT, "{",
+                        msg="diharapkan '{' setelah catch")
+            catch_body = self.block()
+        return ast.Try(body=body, has_catch=has_catch, catch_var=catch_var,
+                       catch_body=catch_body, line=tok.line)
+
     def import_stmt(self, tok):
         # import "path/ke/file.tea" → nama binding dari nama file
         if self.check(STRING):
@@ -226,10 +251,12 @@ class Parser:
             self.advance()
             value = self.expression()
             if isinstance(expr, ast.Ident):
-                return ast.Assign(name=expr.name, value=value, line=tok.line)
+                return ast.Assign(name=expr.name, value=value, line=tok.line,
+                                  column=tok.column)
             if isinstance(expr, ast.Index):
                 return ast.IndexAssign(target=expr.target, index=expr.index,
-                                       value=value, line=tok.line)
+                                       value=value, line=tok.line,
+                                       column=tok.column)
             raise SyntaxErrorTea("target assignment tidak valid",
                                  tok.line, tok.column)
 
@@ -241,18 +268,21 @@ class Parser:
             if isinstance(expr, ast.Ident):
                 combined = ast.Binary(
                     op=base_op,
-                    left=ast.Ident(name=expr.name, line=expr.line),
-                    right=value, line=op_tok.line)
-                return ast.Assign(name=expr.name, value=combined, line=tok.line)
+                    left=ast.Ident(name=expr.name, line=expr.line,
+                                   column=expr.column),
+                    right=value, line=op_tok.line, column=op_tok.column)
+                return ast.Assign(name=expr.name, value=combined, line=tok.line,
+                                  column=tok.column)
             if isinstance(expr, ast.Index):
                 combined = ast.Binary(op=base_op, left=expr, right=value,
-                                      line=op_tok.line)
+                                      line=op_tok.line, column=op_tok.column)
                 return ast.IndexAssign(target=expr.target, index=expr.index,
-                                       value=combined, line=tok.line)
+                                       value=combined, line=tok.line,
+                                       column=tok.column)
             raise SyntaxErrorTea("target assignment tidak valid",
                                  tok.line, tok.column)
 
-        return ast.ExprStmt(expr=expr, line=tok.line)
+        return ast.ExprStmt(expr=expr, line=tok.line, column=tok.column)
 
     # --- Expressions (precedence climbing) ---
     def expression(self):
@@ -273,7 +303,8 @@ class Parser:
         while self.match(KEYWORD, "or"):
             op_tok = self.tokens[self.pos - 1]
             right = self.logical_and()
-            left = ast.Binary(op="or", left=left, right=right, line=op_tok.line)
+            left = ast.Binary(op="or", left=left, right=right,
+                              line=op_tok.line, column=op_tok.column)
         return left
 
     def logical_and(self):
@@ -281,14 +312,16 @@ class Parser:
         while self.match(KEYWORD, "and"):
             op_tok = self.tokens[self.pos - 1]
             right = self.logical_not()
-            left = ast.Binary(op="and", left=left, right=right, line=op_tok.line)
+            left = ast.Binary(op="and", left=left, right=right,
+                              line=op_tok.line, column=op_tok.column)
         return left
 
     def logical_not(self):
         if self.match(KEYWORD, "not"):
             op_tok = self.tokens[self.pos - 1]
             operand = self.logical_not()
-            return ast.Unary(op="not", operand=operand, line=op_tok.line)
+            return ast.Unary(op="not", operand=operand, line=op_tok.line,
+                             column=op_tok.column)
         return self.comparison()
 
     def comparison(self):
@@ -298,13 +331,13 @@ class Parser:
                 op_tok = self.advance()
                 right = self.term()
                 left = ast.Binary(op=op_tok.value, left=left, right=right,
-                                  line=op_tok.line)
+                                  line=op_tok.line, column=op_tok.column)
             elif self.check(KEYWORD, "in"):
                 # Python/JS: x in container
                 op_tok = self.advance()
                 right = self.term()
                 left = ast.Binary(op="in", left=left, right=right,
-                                  line=op_tok.line)
+                                  line=op_tok.line, column=op_tok.column)
             elif self.check(KEYWORD, "not") and self.peek().type == KEYWORD \
                     and self.peek().value == "in":
                 # Python: x not in container
@@ -312,7 +345,7 @@ class Parser:
                 self.advance()  # konsumsi 'in'
                 right = self.term()
                 left = ast.Binary(op="not in", left=left, right=right,
-                                  line=op_tok.line)
+                                  line=op_tok.line, column=op_tok.column)
             else:
                 break
         return left
@@ -323,7 +356,7 @@ class Parser:
             op_tok = self.advance()
             right = self.factor()
             left = ast.Binary(op=op_tok.value, left=left, right=right,
-                              line=op_tok.line)
+                              line=op_tok.line, column=op_tok.column)
         return left
 
     def factor(self):
@@ -332,14 +365,15 @@ class Parser:
             op_tok = self.advance()
             right = self.unary()
             left = ast.Binary(op=op_tok.value, left=left, right=right,
-                              line=op_tok.line)
+                              line=op_tok.line, column=op_tok.column)
         return left
 
     def unary(self):
         if self.check(OP, "-"):
             op_tok = self.advance()
             operand = self.unary()
-            return ast.Unary(op="-", operand=operand, line=op_tok.line)
+            return ast.Unary(op="-", operand=operand, line=op_tok.line,
+                             column=op_tok.column)
         return self.postfix()
 
     def postfix(self):
@@ -352,7 +386,8 @@ class Parser:
                     while self.match(PUNCT, ","):
                         args.append(self.argument())
                 self.expect(PUNCT, ")", msg="diharapkan ')' setelah argumen")
-                expr = ast.Call(callee=expr, args=args, line=expr.line)
+                expr = ast.Call(callee=expr, args=args, line=expr.line,
+                                column=expr.column)
             elif self.match(PUNCT, "["):
                 expr = self.index_or_slice(expr)
             elif self.match(PUNCT, "."):
@@ -361,8 +396,9 @@ class Parser:
                                        msg="diharapkan nama setelah '.'")
                 expr = ast.Index(
                     target=expr,
-                    index=ast.String(value=name_tok.value, line=name_tok.line),
-                    line=expr.line)
+                    index=ast.String(value=name_tok.value, line=name_tok.line,
+                                     column=name_tok.column),
+                    line=expr.line, column=name_tok.column)
             else:
                 break
         return expr
@@ -401,7 +437,7 @@ class Parser:
         if self.match(KEYWORD, "nil"):
             return ast.Nil(line=tok.line)
         if self.match(IDENT):
-            return ast.Ident(name=tok.value, line=tok.line)
+            return ast.Ident(name=tok.value, line=tok.line, column=tok.column)
         if self.match(PUNCT, "("):
             expr = self.expression()
             self.expect(PUNCT, ")", msg="diharapkan ')' untuk menutup ekspresi")

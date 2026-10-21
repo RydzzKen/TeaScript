@@ -14,6 +14,7 @@ Aturan emas:
 5. Hanya ASCII di dalam kode. Jangan tulis tanda kutip pintar (“ ” ‘ ’),
    spasi tak-putus, atau huruf lebar — semua itu error.
 6. Library Python diakses lewat `pyimport("nama")`, **bukan** `import`.
+7. Tangkap error dengan `try { ... } catch e { ... }` — **bukan** `try/except` Python.
 
 ---
 
@@ -109,6 +110,40 @@ for i in range(10) {
   print(i)
 }
 ```
+
+### Tangkap error (`try` / `catch`)
+
+```tea
+try {
+  let hasil = 10 / nol
+} catch e {
+  print(e.message)     // "pembagian dengan nol"
+  print(e.kind)        // "runtime"
+}
+```
+
+Bentuk lengkap:
+
+```tea
+try {
+  // kode yang mungkin error
+} catch e {
+  // jalan kalau ada error
+}
+```
+
+Aturan:
+
+- `catch e` → `e` berisi objek error. Field: `message` (pesan polos),
+  `line`, `column` (posisi), `kind` (`"runtime"`, `"nama"`, `"sintaks"`,
+  `"python"`), `cause` (exception Python asli kalau ada).
+- `catch { ... }` (tanpa variabel) → error ditelan, program lanjut.
+- Error **Python** dari `pyimport` ikut tertangkap; `e.kind` = `"python"`
+  dan `e.message` menyebut nama exception-nya.
+- `break`, `continue`, dan `return` di dalam `try` **bukan** error — tetap
+  bekerja seperti biasa.
+- `try` tanpa `catch` boleh; errornya tetap naik ke luar.
+- Tidak ada `finally` dan tidak ada `raise` (untuk sekarang).
 
 ## 4. Fungsi
 
@@ -391,6 +426,17 @@ Error (baris 2, kolom 1): ekspresi tidak lengkap (menemukan akhir file)
 Error (baris 3): karakter tidak dikenal: '#'
 ```
 
+Error juga menampilkan **baris sumbernya** + penanda `^` di kolom yang salah:
+
+```
+Error (baris 3, kolom 7): variabel 'z' belum dideklarasikan
+  3 | print(z)
+    |       ^
+```
+
+Error bisa ditangkap dengan `try` / `catch` (lihat §3). Objek error punya
+`message`, `line`, `column`, `kind`, dan `cause`.
+
 Pesan error berbahasa Indonesia, tapi **kata kunci bahasa tetap Inggris**.
 
 ---
@@ -511,6 +557,8 @@ print("Debug: ${debug} (${type(debug)})")
 | `x === y` | `x == y` |
 | `let x = 1;` | `let x = 1` |
 | `for i in range(3):` (indentasi) | `for i in range(3) { }` |
+| `try: ... except: ...` (Python) | `try { ... } catch e { ... }` |
+| `except Exception as e:` | `catch e { ... }` |
 | `f(x, end="")` | `f(x, let _end = "")` |
 | `dict.get("k")` | `d["k"]` atau `d.k` |
 | `"a" + 1` | `"a" + str(1)` (tipe harus cocok) |

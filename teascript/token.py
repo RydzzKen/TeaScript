@@ -29,6 +29,7 @@ KEYWORDS = {
     "true", "false", "nil", "and", "or", "not",
     "for", "in", "break", "continue",
     "import", "from",
+    "try", "catch",
 }
 
 # Operator dua karakter lebih dulu

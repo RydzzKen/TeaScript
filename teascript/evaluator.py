@@ -4,7 +4,7 @@ import os
 import importlib
 
 from . import ast_nodes as ast
-from .errors import NameErrorTea, RuntimeErrorTea, TeaError
+from .errors import NameErrorTea, RuntimeErrorTea, TeaError, CaughtError
 from .lexer import Lexer
 from .parser import Parser
 
@@ -14,23 +14,24 @@ class Environment:
         self.parent = parent
         self.values = {}
 
-    def get(self, name, line):
+    def get(self, name, line, column=None):
         if name in self.values:
             return self.values[name]
         if self.parent is not None:
-            return self.parent.get(name, line)
-        raise NameErrorTea(f"variabel '{name}' belum dideklarasikan", line)
+            return self.parent.get(name, line, column)
+        raise NameErrorTea(f"variabel '{name}' belum dideklarasikan", line,
+                           column)
 
-    def set(self, name, value, line):
+    def set(self, name, value, line, column=None):
         if name in self.values:
             self.values[name] = value
             return
         if self.parent is not None:
-            self.parent.set(name, value, line)
+            self.parent.set(name, value, line, column)
             return
         raise NameErrorTea(
             f"variabel '{name}' belum dideklarasikan "
-            f"(pakai 'let {name} = ...' dulu)", line)
+            f"(pakai 'let {name} = ...' dulu)", line, column)
 
     def declare(self, name, value):
         self.values[name] = value
@@ -665,6 +666,8 @@ class Evaluator:
             return "dict"
         if isinstance(value, Function) or callable(value):
             return "function"
+        if isinstance(value, CaughtError):
+            return "error"
         # Objek Python lain (hasil pyimport): nama kelasnya
         return type(value).__name__
 
@@ -912,13 +915,13 @@ class Evaluator:
 
         elif isinstance(node, ast.Assign):
             value = self.evaluate(node.value, env)
-            env.set(node.name, value, node.line)
+            env.set(node.name, value, node.line, node.column)
 
         elif isinstance(node, ast.IndexAssign):
             target = self.evaluate(node.target, env)
             index = self.evaluate(node.index, env)
             value = self.evaluate(node.value, env)
-            self.assign_index(target, index, value, node.line)
+            self.assign_index(target, index, value, node.line, node.column)
 
         elif isinstance(node, ast.ExprStmt):
             self.evaluate(node.expr, env)
@@ -955,6 +958,9 @@ class Evaluator:
                 except BreakSignal:
                     break
 
+        elif isinstance(node, ast.Try):
+            self.exec_try(node, env)
+
         elif isinstance(node, ast.Break):
             raise BreakSignal(node.line)
 
@@ -987,6 +993,38 @@ class Evaluator:
             raise RuntimeErrorTea(f"statement tidak dikenal: {type(node).__name__}",
                                   getattr(node, "line", None))
 
+    # --- try / catch ---
+    def exec_try(self, node, env):
+        """Jalankan blok try; kalau error, serahkan ke blok catch.
+
+        Error yang ditangkap:
+          - TeaError  : error dari interpreter (runtime, nama variabel, ...)
+          - Exception : error Python yang tidak dibungkus (mis. pyimport)
+
+        `break`, `continue`, dan `return` BUKAN error — keduanya terus
+        keluar dari blok try seperti biasa.
+        """
+        try:
+            for s in node.body:
+                self.execute(s, env)
+        except (BreakSignal, ContinueSignal, ReturnSignal):
+            raise
+        except TeaError as err:
+            if not node.has_catch:
+                raise
+            self.run_catch(CaughtError.from_error(err), node, env)
+        except Exception as err:
+            if not node.has_catch:
+                raise
+            self.run_catch(CaughtError.from_python(err, node.line), node, env)
+
+    def run_catch(self, caught, node, env):
+        """Jalankan blok catch; variabel penampung error diisi dulu."""
+        if node.catch_var:
+            env.declare(node.catch_var, caught)
+        for s in node.catch_body:
+            self.execute(s, env)
+
     # --- Expressions ---
     def evaluate(self, node, env):
         if isinstance(node, ast.Number):
@@ -998,7 +1036,7 @@ class Evaluator:
         if isinstance(node, ast.Nil):
             return None
         if isinstance(node, ast.Ident):
-            return env.get(node.name, node.line)
+            return env.get(node.name, node.line, node.column)
 
         if isinstance(node, ast.ListLit):
             return [self.evaluate(e, env) for e in node.elements]
@@ -1054,12 +1092,12 @@ class Evaluator:
                     kwargs[a.name] = self.evaluate(a.value, env)
                 else:
                     args.append(self.evaluate(a, env))
-            return self.call(callee, args, node.line, kwargs)
+            return self.call(callee, args, node.line, kwargs, node.column)
 
         if isinstance(node, ast.Index):
             target = self.evaluate(node.target, env)
             index = self.evaluate(node.index, env)
-            return self.index_get(target, index, node.line)
+            return self.index_get(target, index, node.line, node.column)
 
         if isinstance(node, ast.Slice):
             target = self.evaluate(node.target, env)
@@ -1092,10 +1130,10 @@ class Evaluator:
             # string concat jika salah satu string
             if isinstance(left, str) or isinstance(right, str):
                 return self.to_string(left) + self.to_string(right)
-            self.check_numbers(left, right, op, node.line)
+            self.check_numbers(left, right, op, node.line, node.column)
             return left + right
         if op == "-":
-            self.check_numbers(left, right, op, node.line)
+            self.check_numbers(left, right, op, node.line, node.column)
             return left - right
         if op == "*":
             # string * angka → ulangi string
@@ -1107,54 +1145,60 @@ class Evaluator:
                 if left < 0:
                     return ""
                 return right * left
-            self.check_numbers(left, right, op, node.line)
+            self.check_numbers(left, right, op, node.line, node.column)
             return left * right
         if op == "/":
-            self.check_numbers(left, right, op, node.line)
+            self.check_numbers(left, right, op, node.line, node.column)
             if right == 0:
-                raise RuntimeErrorTea("pembagian dengan nol", node.line)
+                raise RuntimeErrorTea("pembagian dengan nol", node.line,
+                                      node.column)
             return left / right
         if op == "%":
-            self.check_numbers(left, right, op, node.line)
+            self.check_numbers(left, right, op, node.line, node.column)
             if right == 0:
-                raise RuntimeErrorTea("modulo dengan nol", node.line)
+                raise RuntimeErrorTea("modulo dengan nol", node.line,
+                                      node.column)
             return left % right
         if op == "==":
             return self.is_equal(left, right)
         if op == "!=":
             return not self.is_equal(left, right)
         if op == "in":
-            return self.contains(left, right, node.line)
+            return self.contains(left, right, node.line, node.column)
         if op == "not in":
-            return not self.contains(left, right, node.line)
+            return not self.contains(left, right, node.line, node.column)
         if op == "<":
-            self.check_comparable(left, right, op, node.line)
+            self.check_comparable(left, right, op, node.line, node.column)
             return left < right
         if op == ">":
-            self.check_comparable(left, right, op, node.line)
+            self.check_comparable(left, right, op, node.line, node.column)
             return left > right
         if op == "<=":
-            self.check_comparable(left, right, op, node.line)
+            self.check_comparable(left, right, op, node.line, node.column)
             return left <= right
         if op == ">=":
-            self.check_comparable(left, right, op, node.line)
+            self.check_comparable(left, right, op, node.line, node.column)
             return left >= right
 
-        raise RuntimeErrorTea(f"operator tidak dikenal: {op}", node.line)
+        raise RuntimeErrorTea(f"operator tidak dikenal: {op}", node.line,
+                              node.column)
 
-    def check_numbers(self, a, b, op, line):
+    def check_numbers(self, a, b, op, line, column=None):
         if isinstance(a, bool) or isinstance(b, bool):
-            raise RuntimeErrorTea(f"operator '{op}' tidak mendukung boolean", line)
+            raise RuntimeErrorTea(f"operator '{op}' tidak mendukung boolean",
+                                  line, column)
         if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-            raise RuntimeErrorTea(f"operator '{op}' membutuhkan angka", line)
+            raise RuntimeErrorTea(f"operator '{op}' membutuhkan angka", line,
+                                  column)
 
-    def check_comparable(self, a, b, op, line):
+    def check_comparable(self, a, b, op, line, column=None):
         if isinstance(a, (int, float)) and isinstance(b, (int, float)) \
                 and not isinstance(a, bool) and not isinstance(b, bool):
             return
         if isinstance(a, str) and isinstance(b, str):
             return
-        raise RuntimeErrorTea(f"operator '{op}' tidak bisa membandingkan tipe ini", line)
+        raise RuntimeErrorTea(
+            f"operator '{op}' tidak bisa membandingkan tipe ini", line, column)
 
     def is_equal(self, a, b):
         if a is None and b is None:
@@ -1163,13 +1207,13 @@ class Evaluator:
             return a is b
         return a == b
 
-    def contains(self, item, container, line=None):
+    def contains(self, item, container, line=None, column=None):
         """Cek keanggotaan untuk operator `in` dan builtin includes()."""
         if isinstance(container, str):
             if not isinstance(item, str):
                 raise RuntimeErrorTea(
                     "operator 'in' untuk string membutuhkan string di kiri, "
-                    f"diberi {self.type_name(item)}", line)
+                    f"diberi {self.type_name(item)}", line, column)
             return item in container
         if isinstance(container, list):
             return any(self.is_equal(item, v) for v in container)
@@ -1178,7 +1222,7 @@ class Evaluator:
             return item in container
         raise RuntimeErrorTea(
             f"operator 'in' tidak mendukung tipe {self.type_name(container)}",
-            line)
+            line, column)
 
     def check_hashable(self, key, line=None):
         try:
@@ -1207,13 +1251,13 @@ class Evaluator:
         e = max(0, min(e, n))
         return target[s:e]
 
-    def call(self, callee, args, line, kwargs=None):
+    def call(self, callee, args, line, kwargs=None, column=None):
         kwargs = kwargs or {}
         if isinstance(callee, Function):
             if kwargs:
                 raise RuntimeErrorTea(
                     "keyword argument (let _nama = ...) hanya untuk fungsi Python",
-                    line)
+                    line, column)
             args = self._isi_default(callee, args, line)
             return self.invoke(callee, args, line)
         if callable(callee):
@@ -1222,11 +1266,19 @@ class Evaluator:
             except RuntimeErrorTea as e:
                 if e.line is None:
                     e.line = line  # lengkapi posisi error dari pemanggilan
+                if e.column is None:
+                    e.column = column
                 raise
             except Exception as e:
-                raise RuntimeErrorTea(f"error saat memanggil fungsi bawaan: {e}", line)
+                # error dari fungsi Python (pyimport): sebut jenisnya juga
+                # supaya jelas itu error Python, bukan error TeaScript.
+                err = RuntimeErrorTea(
+                    f"error saat memanggil fungsi Python: "
+                    f"{type(e).__name__}: {e}", line, column)
+                err.cause = e
+                raise err
             return self.from_python(result)
-        raise RuntimeErrorTea("nilai tidak bisa dipanggil", line)
+        raise RuntimeErrorTea("nilai tidak bisa dipanggil", line, column)
 
     def _isi_default(self, fn, args, line):
         """Lengkapi argumen yang kurang dengan nilai default parameternya."""
@@ -1296,22 +1348,24 @@ class Evaluator:
                 f"(mode non-interaktif)")
         return True
 
-    def index_get(self, target, index, line):
+    def index_get(self, target, index, line, column=None):
+        def err(pesan):
+            return RuntimeErrorTea(pesan, line, column)
+
         if isinstance(target, list):
             if not isinstance(index, int) or isinstance(index, bool):
-                raise RuntimeErrorTea("indeks list harus angka bulat", line)
+                raise err("indeks list harus angka bulat")
             asli = index
             if index < 0:
                 index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(
-                    f"indeks {asli} di luar batas list (panjang {len(target)})",
-                    line)
+                raise err(
+                    f"indeks {asli} di luar batas list (panjang {len(target)})")
             return target[index]
         if isinstance(target, dict):
             self.check_hashable(index, line)
             if index not in target:
-                raise RuntimeErrorTea(f"key '{index}' tidak ada di dictionary", line)
+                raise err(f"key '{index}' tidak ada di dictionary")
             return target[index]
         if isinstance(target, str):
             if isinstance(index, str):
@@ -1321,22 +1375,21 @@ class Evaluator:
                 if fn is None:
                     dasar = index.replace("_", ".")
                     if dasar in _METHOD_STRING:
-                        raise RuntimeErrorTea(
+                        raise err(
                             f"'{index}' bukan nama method yang ada. "
-                            f"Mungkin maksudmu '{dasar}' (pakai titik)", line)
-                    raise RuntimeErrorTea(
+                            f"Mungkin maksudmu '{dasar}' (pakai titik)")
+                    raise err(
                         f"string tidak punya '{index}'. Method yang ada: "
-                        + ", ".join(sorted(_METHOD_STRING)), line)
+                        + ", ".join(sorted(_METHOD_STRING)))
                 return BoundMethod(target, fn, index)
             if not isinstance(index, int) or isinstance(index, bool):
-                raise RuntimeErrorTea("indeks string harus angka bulat", line)
+                raise err("indeks string harus angka bulat")
             asli = index
             if index < 0:
                 index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(
-                    f"indeks {asli} di luar batas string (panjang {len(target)})",
-                    line)
+                raise err(
+                    f"indeks {asli} di luar batas string (panjang {len(target)})")
             return target[index]
 
         # Objek Python (hasil pyimport): akses atribut, mis. m.sqrt
@@ -1346,22 +1399,23 @@ class Evaluator:
             try:
                 return getattr(target, index)
             except AttributeError:
-                raise RuntimeErrorTea(
-                    f"objek Python tidak punya atribut '{index}'", line)
+                raise err(f"objek Python tidak punya atribut '{index}'")
 
-        raise RuntimeErrorTea("tipe ini tidak mendukung indeks", line)
+        raise err("tipe ini tidak mendukung indeks")
 
-    def assign_index(self, target, index, value, line):
+    def assign_index(self, target, index, value, line, column=None):
+        def err(pesan):
+            return RuntimeErrorTea(pesan, line, column)
+
         if isinstance(target, list):
             if not isinstance(index, int) or isinstance(index, bool):
-                raise RuntimeErrorTea("indeks list harus angka bulat", line)
+                raise err("indeks list harus angka bulat")
             asli = index
             if index < 0:
                 index += len(target)  # indeks negatif dari belakang
             if index < 0 or index >= len(target):
-                raise RuntimeErrorTea(
-                    f"indeks {asli} di luar batas list (panjang {len(target)})",
-                    line)
+                raise err(
+                    f"indeks {asli} di luar batas list (panjang {len(target)})")
             target[index] = value
             return
         if isinstance(target, dict):
@@ -1376,7 +1430,6 @@ class Evaluator:
                 setattr(target, index, value)
                 return
             except (AttributeError, TypeError):
-                raise RuntimeErrorTea(
-                    f"tidak bisa mengubah atribut '{index}' pada objek Python",
-                    line)
-        raise RuntimeErrorTea("tipe ini tidak mendukung assignment indeks", line)
+                raise err(
+                    f"tidak bisa mengubah atribut '{index}' pada objek Python")
+        raise err("tipe ini tidak mendukung assignment indeks")

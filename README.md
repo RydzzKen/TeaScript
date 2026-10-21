@@ -18,6 +18,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - Variabel `let`, assignment biasa dan gabungan (`+=`, `-=`, `*=`, `/=`, `%=`)
 - Tipe: number, string, boolean, `nil`, list, dictionary, fungsi
 - Kendali alur: `if / else if / else`, `while`, `for ... in`, `break`, `continue`
+- **Tangkap error**: `try { ... } catch e { ... }` (error Python ikut tertangkap)
 - Ternary ala JS: `kondisi ? a : b`
 - Fungsi dengan closure dan `return`
 - String interpolasi ala JS: `"Halo, ${nama}!"`
@@ -31,7 +32,7 @@ print(len(sapaan) > 5 ? sapaan : "singkat sekali")
 - **Baca `.env`**: `import env` — konfigurasi tanpa paket Python tambahan
 - Nilai default parameter: `fn sapa(nama, sapaan = "Halo")`
 - 27 fungsi bawaan + 4 modul stdlib (`math`, `text`, `collections`, `env`)
-- Error dengan posisi **baris:kolom**, REPL, dan 171 test
+- Error dengan posisi **baris:kolom** + cuplikan baris sumber, REPL, dan 216 test
 
 ## Instalasi
 
@@ -196,6 +197,53 @@ let sapaan = umur > 17 ? "dewasa" : "anak"   // ternary
 ```
 
 Yang bisa diiterasi `for ... in`: **list, string, dict** (dict → key-nya).
+
+### Menangkap error (try / catch)
+
+```tea
+try {
+  let hasil = 10 / nol
+} catch e {
+  print(e.message)     // "pembagian dengan nol"
+  print(e.kind)        // "runtime"
+  print(e.line)        // nomor baris errornya
+}
+```
+
+Bentuk lengkap:
+
+```tea
+try {
+  // kode yang mungkin error
+} catch e {
+  // jalan kalau ada error
+}                      // kalau tidak ada error, blok catch dilewati
+```
+
+- `catch e` → `e` berisi objek error. Field-nya: `message` (pesan polos),
+  `line`, `column` (posisi), `kind` (`"runtime"`, `"nama"`, `"sintaks"`,
+  `"python"`), dan `cause` (exception Python aslinya, kalau ada).
+- `catch { ... }` (tanpa variabel) → error ditelan, program lanjut.
+- Error **Python** dari `pyimport` juga ikut tertangkap:
+  `e.kind` = `"python"`, `e.message` menyebut nama exception-nya
+  (mis. `FileNotFoundError: ...`).
+- `break`, `continue`, dan `return` di dalam `try` **bukan** error — semuanya
+  tetap bekerja seperti biasa.
+- `try` tanpa `catch` boleh ditulis; errornya tetap naik ke luar.
+
+```tea
+// Contoh: baca file, kalau tidak ada pakai teks cadangan
+fn baca(path) {
+  try {
+    let f = pyimport("builtins").open(path, "r", let _encoding = "utf-8")
+    let isi = f.read()
+    f.close()
+    return isi
+  } catch e {
+    return "(file tidak terbaca: ${e.message})"
+  }
+}
+```
 
 ### Fungsi
 
@@ -434,6 +482,15 @@ Method yang sudah tersedia bisa dilihat lewat pesan error: coba tulis
 - **Scope**: variabel mengikuti lingkup blok fungsi; `let` di dalam fungsi tidak mengubah variabel luar, tapi assignment ke variabel luar tetap berlaku (closure).
 - **Key dict** harus tipe yang bisa disimpan (string, number, boolean, nil) — error jelas jika tidak.
 - **Error** selalu menyertakan posisi, mis. `Error (baris 3, kolom 8): variabel 'x' belum dideklarasikan`.
+- **Error juga menampilkan baris sumbernya** + penanda `^` di kolom yang salah,
+  jadi tidak perlu lagi membuka file cuma buat cari baris mana:
+
+  ```
+  Error (baris 3, kolom 7): variabel 'z' belum dideklarasikan
+    3 | print(z)
+      |       ^
+  ```
+
 - **Identifier hanya ASCII.** Huruf "mirip" seperti `ｎ` lebar-penuh atau `ａ` akan ditolak,
   supaya tidak diam-diam jadi variabel yang berbeda dari yang kamu kira.
 
@@ -578,7 +635,7 @@ tea-web              # playground + API di http://127.0.0.1:5000
 python3 -m pytest
 ```
 
-171 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), modul `env`, default parameter, `tea check`, packaging, dan CLI.
+216 test menutup lexer, parser, evaluator, builtins, sistem modul, pyimport, web (termasuk server HTTP sungguhan), modul `env`, default parameter, `try`/`catch`, `tea check`, packaging, dan CLI.
 
 ## Struktur Proyek
 
@@ -611,4 +668,6 @@ TeaScript/
 - [ ] Fungsi anonim / arrow function `() => ...`
 - [ ] `map`, `filter`, `reduce` (higher-order function)
 - [ ] Slicing dengan step `xs[::2]`
+- [ ] Blok `finally` untuk `try / catch`
+- [ ] `raise` untuk melempar error sendiri
 - [ ] Bytecode VM sebagai alternatif evaluator

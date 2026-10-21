@@ -1,0 +1,56 @@
+// Contoh: menangkap error dengan try / catch.
+//
+// Jalankan:  tea examples/try_catch.tea
+
+// 1. Error biasa (pembagian dengan nol) — ditangkap, program lanjut.
+try {
+  let hasil = 10 / 0
+  print(hasil)
+} catch e {
+  print("1. Tertangkap:", e.message)
+  print("   jenis  :", e.kind)
+  print("   baris  :", e.line)
+}
+
+// 2. Error dari fungsi Python (pyimport) — juga ikut tertangkap.
+let os = pyimport("os")
+try {
+  os.stat("/folder/yang/tidak/ada/sekali")
+} catch e {
+  print("2. Tertangkap:", e.message)
+}
+
+// 3. catch tanpa variabel: error ditelan, program tetap jalan.
+try {
+  let x = tidak_ada
+} catch {
+  print("3. Error ditelan (tanpa variabel)")
+}
+
+// 4. Fungsi yang mengembalikan teks cadangan kalau file tidak terbaca.
+fn baca_file(path) {
+  let builtins = pyimport("builtins")
+  try {
+    let f = builtins.open(path, "r", let _encoding = "utf-8")
+    let isi = f.read()
+    f.close()
+    return isi
+  } catch e {
+    return "(gagal: ${e.message})"
+  }
+}
+
+print("4.", baca_file("contoh_tidak_ada.txt"))
+
+// 5. Error di dalam loop: continue dan break tetap bekerja di dalam try.
+for i in range(5) {
+  try {
+    if i == 2 { continue }
+    if i == 4 { break }
+    print("5. i =", i)
+  } catch e {
+    print("5. error:", e.message)
+  }
+}
+
+print("Selesai.")

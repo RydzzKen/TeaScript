@@ -15,6 +15,29 @@ from .errors import TeaError, RuntimeErrorTea
 from .repl import repl
 
 
+def format_error(err, source=None):
+    """Format error + cuplikan baris sumbernya.
+
+    Hasilnya:
+        Error (baris 22, kolom 5): diharapkan nama key di dictionary
+          22 |     let f = builtins.open(filepath, "r", let _x = "utf-8")
+             |     ^
+
+    Cuplikan hanya ditampilkan kalau sumbernya tersedia dan barisnya ada.
+    """
+    bagian = [err.format()]
+    if source and err.line:
+        baris = source.splitlines()
+        n = err.line
+        if 1 <= n <= len(baris):
+            nomor = str(n)
+            bagian.append(f"  {nomor} | {baris[n - 1]}")
+            if err.column:
+                caret = " " * (err.column - 1) + "^"
+                bagian.append(f"  {' ' * len(nomor)} | {caret}")
+    return "\n".join(bagian)
+
+
 def run_bytes(data):
     """Jalankan kode TeaScript dari bytes (mis. file yang dipipe)."""
     source = data.decode("utf-8", errors="replace")
@@ -24,7 +47,7 @@ def run_bytes(data):
         Evaluator().run(program)
         return 0
     except TeaError as e:
-        print(e.format(), file=sys.stderr)
+        print(format_error(e, source), file=sys.stderr)
         return 1
 
 
@@ -46,7 +69,7 @@ def run_file(path):
         Evaluator().run(program, base_dir=base_dir, script_path=path)
         return 0
     except TeaError as e:
-        print(e.format(), file=sys.stderr)
+        print(format_error(e, source), file=sys.stderr)
         return 1
 
 
